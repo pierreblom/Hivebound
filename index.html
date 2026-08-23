@@ -159,7 +159,7 @@
               <div><p class="eyebrow">Amber exchange</p><h2>Honey market</h2></div>
               <span id="marketTrend" class="trend up">↗ 8%</span>
             </div>
-            <div class="market-price"><strong id="marketPrice">12.4</strong><span>crowns<br/>per jar</span></div>
+            <div class="market-price"><strong id="marketPrice">6.2</strong><span>crowns<br/>per jar</span></div>
             <button id="openMarketButton" class="mobile-market-button">Open market desk <span>→</span></button>
             <svg id="marketChart" class="market-chart" viewBox="0 0 280 80" preserveAspectRatio="none" aria-label="Honey price history"><path id="marketArea"></path><polyline id="marketLine"></polyline></svg>
             <div class="market-actions">
@@ -167,7 +167,7 @@
               <button class="sell-button" data-sell="10">Sell 10</button>
               <button class="sell-button" data-sell="all">Sell all</button>
             </div>
-            <div class="market-rules"><label><input id="autoSellToggle" type="checkbox"/> Auto-sell above 16</label><label>Keep <input id="reserveInput" type="number" min="0" max="99" value="10"/> honey</label></div>
+            <div class="market-rules"><label><input id="autoSellToggle" type="checkbox"/> Auto-sell at 7.2+</label><label>Keep <input id="reserveInput" type="number" min="0" max="99" value="10"/> honey</label></div>
           </section>
 
           <section class="panel expedition-card">
@@ -224,10 +224,10 @@
       <section class="modal mobile-market-modal">
         <button class="close-button modal-close" data-close="marketModal">×</button>
         <p class="eyebrow">Amber exchange</p><h2>Honey market desk</h2>
-        <div class="mobile-market-quote"><strong id="mobileMarketPrice">12.4</strong><span>crowns per jar</span><em id="mobileMarketTrend">↗ 6%</em></div>
+        <div class="mobile-market-quote"><strong id="mobileMarketPrice">6.2</strong><span>crowns per jar</span><em id="mobileMarketTrend">↗ 6%</em></div>
         <svg class="market-chart mobile-market-chart" viewBox="0 0 280 80" preserveAspectRatio="none" aria-label="Honey price history"><path id="mobileMarketArea"></path><polyline id="mobileMarketLine"></polyline></svg>
         <div class="mobile-sell-actions"><button class="sell-button" data-sell="1">Sell 1</button><button class="sell-button" data-sell="10">Sell 10</button><button class="sell-button" data-sell="all">Sell all</button></div>
-        <div class="mobile-market-rules"><label><span><b>Standing order</b><small>Sell automatically above 16 crowns</small></span><input id="mobileAutoSellToggle" type="checkbox"/></label><label><span><b>Protected reserve</b><small>Honey the exchange may never sell</small></span><input id="mobileReserveInput" type="number" min="0" max="99" value="10"/></label></div>
+        <div class="mobile-market-rules"><label><span><b>Standing order</b><small>Sell automatically at 7.2 crowns or more</small></span><input id="mobileAutoSellToggle" type="checkbox"/></label><label><span><b>Protected reserve</b><small>Honey the exchange may never sell</small></span><input id="mobileReserveInput" type="number" min="0" max="99" value="10"/></label></div>
       </section>
     </div>
 
@@ -262,7 +262,7 @@
     <div id="setupModal" class="modal-backdrop">
       <section class="modal setup-modal">
         <button class="close-button modal-close" data-close="setupModal">×</button>
-        <p class="eyebrow">Found a new colony</p><h2>Choose where your story begins</h2><p class="modal-lede">Each biome changes climate and resource flow. Difficulty changes quotas, raids, and run length.</p>
+        <p class="eyebrow">Found a new colony</p><h2>Choose where your story begins</h2><p class="modal-lede">Each biome is harder than the last. Reach milestone levels to unlock the next region; difficulty changes quotas, raids, and run length.</p>
         <h3 class="setup-label">Biome</h3><div id="biomeChoices" class="biome-choices"></div><h3 class="setup-label">Difficulty</h3><div id="difficultyChoices" class="difficulty-choices"></div>
         <button id="startConfiguredGame" class="primary-button setup-start">Found this colony <span>→</span></button>
       </section>

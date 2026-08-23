@@ -4,8 +4,10 @@
   const Core = window.HiveCore;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const SAVE_KEY = 'hivebound-save-v1';
+  const CAREER_KEY = 'hivebound-career-v1';
   const CENTER = { x: 430, y: 335 };
   const HEX_SIZE = 53;
+  const MOBILE_LAYOUT = window.matchMedia('(max-width: 900px)').matches;
   const elements = Object.fromEntries([
     'waxValue', 'nectarValue', 'honeyValue', 'coinValue', 'yearLabel', 'daysLabel', 'yearProgress',
     'pauseButton', 'gridLayer', 'bonusLayer', 'beeLayer', 'workerValue', 'temperatureValue',
@@ -35,6 +37,7 @@
   ].map(id => [id, document.getElementById(id)]));
 
   let state = Core.createInitialState();
+  let career = loadCareer();
   let paused = true;
   let speed = 1;
   let selectedBuild = null;
@@ -54,6 +57,7 @@
   let lastSealListKey = '';
   let lastForageKey = '';
   let pendingYearEnd = false;
+  let beePaintAccumulator = 0;
   const forageCrew = {};
   const beeNames = ['Mallow Wingstead', 'Clover Quickwing', 'Pip Honeyfoot', 'Tansy Goldstripe', 'Bramble Bright', 'Ursula Beedle', 'Cecily Pollenby', 'Tilly Hivesworth', 'Juniper Buzz'];
   const beeLikes = ['warm comb and clover tea', 'sorting jars by stickiness', 'the acoustics of cell seven', 'sunflower pollen at dawn', 'short flights and long naps'];
@@ -122,7 +126,29 @@
   }
 
   function saveGame() {
+    recordCareerProgress();
     if (!state.flags.gameOver) localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  }
+
+  function loadCareer() {
+    const fresh = { bestLevels: { sunmeadow: 1, coast: 0, orchard: 0, highland: 0 } };
+    try {
+      const saved = JSON.parse(localStorage.getItem(CAREER_KEY));
+      return { ...fresh, ...saved, bestLevels: { ...fresh.bestLevels, ...(saved?.bestLevels || {}) } };
+    } catch (_) { return fresh; }
+  }
+
+  function recordCareerProgress() {
+    const biomeId = state.config?.biome || 'sunmeadow';
+    const level = state.progression?.level || 1;
+    if (level <= (career.bestLevels[biomeId] || 0)) return;
+    career.bestLevels[biomeId] = level;
+    localStorage.setItem(CAREER_KEY, JSON.stringify(career));
+  }
+
+  function biomeUnlocked(biome) {
+    if (!biome.unlock) return true;
+    return (career.bestLevels[biome.unlock.biome] || 0) >= biome.unlock.level;
   }
 
   function loadGame() {
@@ -141,7 +167,15 @@
   }
 
   function resetGame(options = {}) {
-    state = Core.createInitialState(Date.now(), { biome: options.biome || selectedBiome, difficulty: options.difficulty || selectedDifficulty });
+    const biomeId = options.biome || selectedBiome;
+    const biome = Core.BIOMES[biomeId] || Core.BIOMES.sunmeadow;
+    if (!biomeUnlocked(biome)) {
+      showToast(`${biome.name} is still locked.`);
+      openSetup();
+      return;
+    }
+    recordCareerProgress();
+    state = Core.createInitialState(Date.now(), { biome: biomeId, difficulty: options.difficulty || selectedDifficulty });
     selectedBuild = null;
     selectedCell = null;
     waitingForYear = false;
@@ -160,6 +194,7 @@
   }
 
   function openSetup() {
+    recordCareerProgress();
     selectedBiome = state.config?.biome || 'sunmeadow';
     selectedDifficulty = state.config?.difficulty || 'worker';
     renderSetupChoices();
@@ -172,10 +207,18 @@
   }
 
   function renderSetupChoices() {
-    elements.biomeChoices.innerHTML = Object.values(Core.BIOMES).map(biome => `<button class="setup-choice${selectedBiome === biome.id ? ' selected' : ''}" data-biome="${biome.id}"><span style="color:${biome.color}">${biome.icon}</span><b>${biome.name}</b><small>${biome.tagline}</small></button>`).join('');
+    elements.biomeChoices.innerHTML = Object.values(Core.BIOMES).map(biome => {
+      const unlocked = biomeUnlocked(biome);
+      const source = biome.unlock ? Core.BIOMES[biome.unlock.biome] : null;
+      const best = source ? career.bestLevels[source.id] || 0 : 0;
+      const challenge = biome.id === 'sunmeadow' ? 'Starting region' : `Quota +${Math.round((biome.quota - 1) * 100)}% • Wasps +${Math.round((biome.raid - 1) * 100)}%`;
+      const lock = unlocked ? '' : `<em class="biome-lock">🔒 Reach Level ${biome.unlock.level} in ${source.name}<small>Best: Level ${best}</small></em>`;
+      return `<button class="setup-choice${selectedBiome === biome.id ? ' selected' : ''}${unlocked ? '' : ' locked'}" data-biome="${biome.id}"${unlocked ? '' : ' disabled'}><span style="color:${biome.color}">${unlocked ? biome.icon : '🔒'}</span><b>${biome.name}</b><small>${biome.tagline}</small><em class="biome-challenge">${challenge}</em>${lock}</button>`;
+    }).join('');
     elements.difficultyChoices.innerHTML = Object.values(Core.DIFFICULTIES).map(difficulty => `<button class="setup-choice${selectedDifficulty === difficulty.id ? ' selected' : ''}" data-difficulty="${difficulty.id}"><span>${difficulty.icon}</span><b>${difficulty.name}</b><small>${difficulty.description}</small></button>`).join('');
-    elements.biomeChoices.querySelectorAll('[data-biome]').forEach(button => button.addEventListener('click', () => { selectedBiome = button.dataset.biome; renderSetupChoices(); }));
+    elements.biomeChoices.querySelectorAll('[data-biome]:not(:disabled)').forEach(button => button.addEventListener('click', () => { selectedBiome = button.dataset.biome; renderSetupChoices(); }));
     elements.difficultyChoices.querySelectorAll('[data-difficulty]').forEach(button => button.addEventListener('click', () => { selectedDifficulty = button.dataset.difficulty; renderSetupChoices(); }));
+    elements.startConfiguredGame.disabled = !biomeUnlocked(Core.BIOMES[selectedBiome] || Core.BIOMES.sunmeadow);
   }
 
   function renderCrestArchive() {
@@ -472,7 +515,7 @@
 
   function render(force = false) {
     const now = performance.now();
-    if (!force && now - lastRender < 180) return;
+    if (!force && now - lastRender < (MOBILE_LAYOUT ? 400 : 180)) return;
     lastRender = now;
     elements.waxValue.textContent = number(state.resources.wax);
     elements.nectarValue.textContent = number(state.resources.nectar);
@@ -513,11 +556,15 @@
     document.body.dataset.biome = state.config?.biome || 'sunmeadow';
     if (selectedCell && state.cells[selectedCell]) showSelection(selectedCell);
     if (elements.broodModal.classList.contains('visible')) renderBroodModal();
-    if (elements.forageModal.classList.contains('visible')) renderForageChoices();
+    if (elements.forageModal.classList.contains('visible')) {
+      renderForageChoices();
+      renderForageProgress();
+    }
   }
 
   function renderForageChoices() {
-    const renderKey = [Math.floor(state.resources.coins), state.workers, Core.currentSeason(state).id, state.expedition?.locationId || '', state.progression.scouting?.locationId || '', Math.floor(state.progression.scouting?.elapsed || 0), state.progression.level, state.progression.discoveredLocations.join(','), JSON.stringify(state.progression.forageUpgrades), ...Object.values(forageCrew)].join('|');
+    Core.FORAGE_LOCATIONS.forEach(location => { forageCrew[location.id] = Math.max(location.bees, forageCrew[location.id] || location.bees); });
+    const renderKey = [Math.floor(state.resources.coins), state.workers, Core.currentSeason(state).id, state.expedition?.locationId || '', state.progression.scouting?.locationId || '', state.progression.level, state.progression.discoveredLocations.join(','), JSON.stringify(state.progression.forageUpgrades), ...Object.values(forageCrew)].join('|');
     if (renderKey === lastForageKey) return;
     lastForageKey = renderKey;
     elements.forageChoices.innerHTML = '';
@@ -527,12 +574,12 @@
     Core.FORAGE_LOCATIONS.forEach(location => {
       const unlockedByLevel = state.progression.level >= location.level;
       const discovered = state.progression.discoveredLocations.includes(location.id);
-      forageCrew[location.id] = Math.max(location.bees, forageCrew[location.id] || location.bees);
       const crew = forageCrew[location.id];
       const unavailable = winter || state.expedition || state.resources.coins < location.cost;
       const crewUnavailable = state.workers < crew + 1;
       const card = document.createElement('article');
-      card.className = `choice-card forage-choice${unavailable || !discovered ? ' disabled' : ''}${!unlockedByLevel ? ' locked-field' : ''}`;
+      card.dataset.location = location.id;
+      card.className = `choice-card forage-choice${discovered && unavailable ? ' disabled' : ''}${!unlockedByLevel ? ' locked-field' : ''}${unlockedByLevel && !discovered ? ' scout-card' : ''}`;
       if (!unlockedByLevel) {
         card.innerHTML = `<span class="choice-art">🔒</span><h3>${location.name}</h3><p>${location.description}</p><strong class="field-lock">Unlocks at level ${location.level}</strong>`;
         elements.forageChoices.appendChild(card);
@@ -541,7 +588,9 @@
       if (!discovered) {
         const scouting = state.progression.scouting?.locationId === location.id;
         const progress = scouting ? Math.round(state.progression.scouting.elapsed / state.progression.scouting.duration * 100) : 0;
-        card.innerHTML = `<span class="choice-art">${location.icon}</span><h3>${location.name}</h3><p>${location.description}</p>${scouting ? `<div class="scout-progress"><i style="width:${progress}%"></i></div><strong>${winter ? 'Waiting for spring' : `${Math.max(0, Math.ceil(state.progression.scouting.duration - state.progression.scouting.elapsed))}s to map`}</strong>` : `<button class="launch-expedition scout-location">Send a scout • ${location.scoutCost} crowns</button><small class="choice-cost">One worker maps the field before swarms can launch.</small>`}`;
+        const scoutBlocked = winter || Boolean(state.expedition) || Boolean(state.progression.scouting) || state.workers < 2 || state.resources.coins < location.scoutCost;
+        const blockedReason = winter ? 'Scouting resumes in spring.' : state.expedition || state.progression.scouting ? 'A field team is already away.' : state.workers < 2 ? 'Keep one worker with the Queen.' : state.resources.coins < location.scoutCost ? `You need ${location.scoutCost} crowns.` : 'One worker maps the field before swarms can launch.';
+        card.innerHTML = `<span class="choice-art">${location.icon}</span><h3>${location.name}</h3><p>${location.description}</p>${scouting ? `<div class="scout-progress"><i style="width:${progress}%"></i></div><strong class="scout-timer">${winter ? 'Waiting for spring' : `${Math.max(0, Math.ceil(state.progression.scouting.duration - state.progression.scouting.elapsed))}s to map`}</strong>` : `<button class="launch-expedition scout-location"${scoutBlocked ? ' disabled' : ''}>${state.resources.coins < location.scoutCost ? `Need ${location.scoutCost} crowns` : `Send a scout • ${location.scoutCost} crowns`}</button><small class="choice-cost">${blockedReason}</small>`}`;
         card.querySelector('.scout-location')?.addEventListener('click', () => {
           const result = Core.startScouting(state, location.id);
           if (!result.ok) return showToast(result.reason);
@@ -576,6 +625,18 @@
       });
       elements.forageChoices.appendChild(card);
     });
+  }
+
+  function renderForageProgress() {
+    const scouting = state.progression.scouting;
+    if (!scouting) return;
+    const card = elements.forageChoices.querySelector(`[data-location="${scouting.locationId}"]`);
+    if (!card) return;
+    const progress = clamp(scouting.elapsed / scouting.duration * 100, 0, 100);
+    const bar = card.querySelector('.scout-progress i');
+    const timer = card.querySelector('.scout-timer');
+    if (bar) bar.style.width = `${progress}%`;
+    if (timer) timer.textContent = Core.currentSeason(state).id === 'frost' ? 'Waiting for spring' : `${Math.max(0, Math.ceil(scouting.duration - scouting.elapsed))}s to map`;
   }
 
   function renderUpgradeCards() {
@@ -622,6 +683,7 @@
   function showGameOver(reason) {
     paused = true;
     state.flags.gameOver = true;
+    recordCareerProgress();
     localStorage.removeItem(SAVE_KEY);
     elements.gameOverTitle.textContent = reason === 'queen' ? 'The Queen has fallen' : 'The Crown’s due was missed';
     elements.gameOverText.textContent = reason === 'queen' ? 'The wasp line broke through. Next colony, fortify before the third summer.' : `Only ${Math.floor(state.quota.delivered)} of ${state.quota.target} honey reached the Crown.`;
@@ -790,6 +852,11 @@
 
   function animateBees(dt) {
     if (!paused && Core.currentSeason(state).id !== 'frost') visualTime += dt * speed;
+    if (MOBILE_LAYOUT) {
+      beePaintAccumulator += dt;
+      if (beePaintAccumulator < 1 / 30) return;
+      beePaintAccumulator = 0;
+    }
     beeVisuals.forEach(bee => {
       let progress = (visualTime - bee.started) / bee.duration;
       if (progress >= 1) {
@@ -830,6 +897,7 @@
     const saved = loadGame();
     if (!saved) return resetGame();
     state = saved;
+    recordCareerProgress();
     paused = false;
     elements.pauseButton.textContent = 'Ⅱ';
     closeAllModals();

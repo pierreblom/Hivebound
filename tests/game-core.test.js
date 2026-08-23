@@ -69,7 +69,7 @@ test('market sales honor permanent trader crests', () => {
   state.market.price = 10;
   state.seals.push('keenTraders');
   const result = Core.sellHoney(state, 10);
-  assert.equal(result.earned, 118);
+  assert.equal(result.earned, 94);
   assert.equal(state.resources.honey, 0);
 });
 
@@ -103,8 +103,39 @@ test('biomes and difficulty configure a new colony', () => {
   const state = Core.createInitialState(42, { biome: 'coast', difficulty: 'crown' });
   assert.equal(Core.currentBiome(state).name, 'Saltwind Coast');
   assert.equal(Core.currentDifficulty(state).name, 'Crown’s Trial');
-  assert.equal(state.quota.target, 13);
+  assert.equal(state.quota.target, 15);
   assert.ok(Core.climate(state).humidity > Core.climate(Core.createInitialState(42)).humidity);
+});
+
+test('biomes form an increasingly difficult level-unlock chain', () => {
+  assert.deepEqual(Core.BIOMES.coast.unlock, { biome: 'sunmeadow', level: 25 });
+  assert.deepEqual(Core.BIOMES.orchard.unlock, { biome: 'coast', level: 50 });
+  assert.deepEqual(Core.BIOMES.highland.unlock, { biome: 'orchard', level: 75 });
+  const sequence = Object.values(Core.BIOMES);
+  for (let index = 1; index < sequence.length; index += 1) {
+    assert.ok(sequence[index].quota > sequence[index - 1].quota);
+    assert.ok(sequence[index].raid > sequence[index - 1].raid);
+    assert.ok(sequence[index].nectar < sequence[index - 1].nectar);
+  }
+});
+
+test('the honey market quote never exceeds eight crowns per jar', () => {
+  const state = Core.createInitialState(42);
+  state.resources.honey = 10;
+  state.market.price = 20;
+  assert.equal(Core.sellHoney(state, 10).earned, 80);
+
+  const old = Core.createInitialState(43);
+  old.market.price = 19;
+  old.market.history = [5, 12, 20];
+  const migrated = Core.normalizeState(old);
+  assert.equal(migrated.market.price, 8);
+  assert.deepEqual(migrated.market.history, [5, 8, 8]);
+
+  migrated.market.price = 8;
+  migrated.market.timer = 7.5;
+  Core.step(migrated, .5, () => 1);
+  assert.ok(migrated.market.price <= 8);
 });
 
 test('seasons materially change nectar production', () => {

@@ -8,12 +8,15 @@
   const YEAR_LENGTH = 180;
   const BASE_QUOTA = 10;
   const SAVE_VERSION = 4;
+  const MARKET_MIN_PRICE = 3.2;
+  const MARKET_MAX_PRICE = 8;
+  const AUTO_SELL_PRICE = 7.2;
 
   const BIOMES = {
-    sunmeadow: { id: 'sunmeadow', name: 'Sunmeadow Vale', icon: '✿', tagline: 'Balanced seasons and generous wildflowers.', temperature: 0, humidity: 0, nectar: 1, wax: 1, color: '#8fba67' },
-    coast: { id: 'coast', name: 'Saltwind Coast', icon: '≈', tagline: 'Cool air, heavy moisture, and rich sea lavender.', temperature: -2.5, humidity: 10, nectar: 1.08, wax: .9, color: '#75a9b5' },
-    orchard: { id: 'orchard', name: 'Cider Orchard', icon: '●', tagline: 'Abundant blossom with hotter harvest seasons.', temperature: 1.8, humidity: 5, nectar: 1.18, wax: .92, color: '#c97855' },
-    highland: { id: 'highland', name: 'Thistle Highlands', icon: '▲', tagline: 'Cold thin air, scarce nectar, and plentiful wax.', temperature: -4, humidity: -7, nectar: .86, wax: 1.28, color: '#7b7f9c' }
+    sunmeadow: { id: 'sunmeadow', name: 'Sunmeadow Vale', icon: '✿', tagline: 'Balanced seasons and generous wildflowers.', temperature: 0, humidity: 0, nectar: 1, wax: 1, quota: 1, raid: 1, unlock: null, color: '#8fba67' },
+    coast: { id: 'coast', name: 'Saltwind Coast', icon: '≈', tagline: 'Cold salt winds, heavy moisture, and tighter quotas.', temperature: -3.5, humidity: 14, nectar: .9, wax: .92, quota: 1.2, raid: 1.15, unlock: { biome: 'sunmeadow', level: 25 }, color: '#75a9b5' },
+    orchard: { id: 'orchard', name: 'Cider Orchard', icon: '●', tagline: 'Hot dry harvests, wary birds, and scarce safe bloom.', temperature: 4, humidity: -4, nectar: .82, wax: .88, quota: 1.4, raid: 1.35, unlock: { biome: 'coast', level: 50 }, color: '#c97855' },
+    highland: { id: 'highland', name: 'Thistle Highlands', icon: '▲', tagline: 'Severe cold, thin air, fierce wasps, and little nectar.', temperature: -6, humidity: -12, nectar: .68, wax: 1.05, quota: 1.65, raid: 1.6, unlock: { biome: 'orchard', level: 75 }, color: '#7b7f9c' }
   };
 
   const DIFFICULTIES = {
@@ -142,7 +145,7 @@
       radius: 2,
       config: { biome: biome.id, difficulty: difficulty.id },
       resources: { wax: 140, nectar: 35, honey: 0, coins: 90 },
-      quota: { target: Math.round(BASE_QUOTA * difficulty.quota), delivered: 0 },
+      quota: { target: Math.round(BASE_QUOTA * difficulty.quota * biome.quota), delivered: 0 },
       workers: 4,
       lostWorkers: 0,
       cells: {
@@ -158,7 +161,7 @@
         level: 1, xp: 0, nextXp: 65, pendingLevels: 0, upgrades: [],
         discoveredLocations: ['clover'], scouting: null, forageUpgrades: {}
       },
-      market: { price: 12.4, history: [9.8, 10.7, 10.2, 11.5, 10.9, 11.7, 12.4], timer: 0, autoSell: false, reserve: 10 },
+      market: { price: 6.2, history: [5.1, 5.7, 5.4, 6.1, 5.8, 6.5, 6.2], timer: 0, autoSell: false, reserve: 10 },
       broodProgress: 0,
       expedition: null,
       raid: null,
@@ -427,10 +430,10 @@
 
   function updateMarket(state, random) {
     const previous = state.market.price;
-    const pull = (12 - previous) * .16;
-    const seasonal = Math.sin((state.yearTime / YEAR_LENGTH) * Math.PI * 2 + state.year) * .7;
-    const shock = (random() - .5) * 3.7;
-    state.market.price = Math.max(5.5, Math.min(22, Math.round((previous + pull + seasonal + shock) * 10) / 10));
+    const pull = (5.8 - previous) * .18;
+    const seasonal = Math.sin((state.yearTime / YEAR_LENGTH) * Math.PI * 2 + state.year) * .35;
+    const shock = (random() - .5) * 1.8;
+    state.market.price = Math.max(MARKET_MIN_PRICE, Math.min(MARKET_MAX_PRICE, Math.round((previous + pull + seasonal + shock) * 10) / 10));
     state.market.history.push(state.market.price);
     if (state.market.history.length > 18) state.market.history.shift();
   }
@@ -518,7 +521,8 @@
     const quantity = amount === 'all' ? Math.floor(state.resources.honey) : Math.min(Math.floor(state.resources.honey), Number(amount));
     if (!quantity) return { ok: false, reason: 'The vaults are empty.' };
     const smallBatchSale = state.workers <= 6 && state.seals.includes('smallBatch') ? .2 : 0;
-    const earned = Math.round(quantity * state.market.price * (1 + sealBonus(state, 'sale') + smallBatchSale));
+    const salePrice = Math.min(MARKET_MAX_PRICE, Math.max(MARKET_MIN_PRICE, state.market.price));
+    const earned = Math.round(quantity * salePrice * (1 + sealBonus(state, 'sale') + smallBatchSale));
     state.resources.honey -= quantity;
     state.resources.coins += earned;
     state.stats.honeySold += quantity;
@@ -528,7 +532,7 @@
   }
 
   function raidStrength(state) {
-    return (5 + (state.year - 1) * 8) * currentDifficulty(state).raid;
+    return (5 + (state.year - 1) * 8) * currentDifficulty(state).raid * currentBiome(state).raid;
   }
 
   function startRaid(state, random = Math.random) {
@@ -672,7 +676,7 @@
       const before = state.market.price;
       updateMarket(state, random);
       events.push({ type: 'market', before, price: state.market.price });
-      if (state.market.autoSell && state.market.price >= 16) {
+      if (state.market.autoSell && state.market.price >= AUTO_SELL_PRICE) {
         const available = Math.max(0, Math.floor(state.resources.honey - state.market.reserve));
         if (available) {
           const sale = sellHoney(state, available);
@@ -727,7 +731,7 @@
     state.stats.yearsCompleted += 1;
     state.year += 1;
     state.yearTime = 0;
-    state.quota = { target: Math.round(BASE_QUOTA * Math.pow(1.72, state.year - 1) * currentDifficulty(state).quota), delivered: 0 };
+    state.quota = { target: Math.round(BASE_QUOTA * Math.pow(1.72, state.year - 1) * currentDifficulty(state).quota * currentBiome(state).quota), delivered: 0 };
     state.flags.raidResolved = false;
     state.flags.seasonIndex = 0;
     state.flags.upgradeRerolls = 0;
@@ -769,11 +773,13 @@
       if (cell.type === 'brood' && !cell.brood) cell.brood = { progress: raw.broodProgress || 0, stage: broodStage(raw.broodProgress || 0) };
     }
     merged.resources.honey = Number(merged.resources.honey) || 0;
+    merged.market.price = Math.max(MARKET_MIN_PRICE, Math.min(MARKET_MAX_PRICE, Number(merged.market.price) || fresh.market.price));
+    merged.market.history = (Array.isArray(merged.market.history) ? merged.market.history : fresh.market.history).map(price => Math.max(MARKET_MIN_PRICE, Math.min(MARKET_MAX_PRICE, Number(price) || fresh.market.price)));
     return merged;
   }
 
   return {
-    YEAR_LENGTH, BASE_QUOTA, CELL_TYPES, UPGRADES, LEVEL_UPGRADES, FIELD_UPGRADES, FORAGE_LOCATIONS, BIOMES, DIFFICULTIES, SEASONS,
+    YEAR_LENGTH, BASE_QUOTA, MARKET_MIN_PRICE, MARKET_MAX_PRICE, AUTO_SELL_PRICE, CELL_TYPES, UPGRADES, LEVEL_UPGRADES, FIELD_UPGRADES, FORAGE_LOCATIONS, BIOMES, DIFFICULTIES, SEASONS,
     key, parseKey, distance, axialCoordinates, neighbors, seededRandom,
     createInitialState, normalizeState, countCells, nectarPerGarden, adjacentCount, cellCost,
     canBuild, buildCell, demolishCell, upgradeCell, cellBonuses, climate, storageCapacity,
