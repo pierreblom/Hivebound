@@ -4,6 +4,7 @@
   "private": true,
   "description": "An original bee-colony engine-builder prototype.",
   "scripts": {
+    "build": "node scripts/build-static.js",
     "start": "node server.js",
     "test": "node --test tests/*.test.js"
   },

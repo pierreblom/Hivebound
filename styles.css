@@ -319,3 +319,57 @@ button, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action
   .mobile-market-rules { grid-template-columns: 1fr 1fr; margin-top: 10px; }
   .mobile-market-rules label { min-height: 48px; }
 }
+
+/* Illustrated resources, seasons, and hive inhabitants ------------------ */
+.topbar { grid-template-columns: minmax(180px, .55fr) minmax(410px, 1.35fr) minmax(240px, .72fr) minmax(230px, .7fr); gap: 14px; }
+.resource-icon { width: 31px; height: 31px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(66, 43, 15, .14)); }
+.season-timeline-button {
+  position: relative; width: 100%; height: 54px; overflow: hidden; padding: 0;
+  border: 1px solid rgba(86, 57, 17, .13); border-radius: 12px; background: #e9ddb9;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); cursor: pointer;
+}
+.season-timeline-button > img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.season-timeline-button::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(45,40,31,.22)); pointer-events: none; }
+.season-timeline-button > b { position: absolute; z-index: 2; left: 9px; bottom: 5px; color: #fff; font-size: 8px; text-shadow: 0 1px 3px rgba(45,31,12,.65); text-transform: uppercase; letter-spacing: .1em; }
+.season-timeline-marker { position: absolute; z-index: 3; top: -1px; width: 3px; height: 100%; transform: translateX(-50%); background: rgba(90,44,17,.65); pointer-events: none; transition: left .3s linear; }
+.season-timeline-marker::before { content: ""; position: absolute; top: 0; left: 50%; width: 0; height: 0; transform: translateX(-50%); border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 11px solid #7d3516; filter: drop-shadow(0 1px 1px rgba(255,255,255,.5)); }
+.stage-heading .season-badge { display: none; }
+
+.cell-garden .hex-shape { fill: #efd061; stroke: #b88820; }
+.cell-queen .hex-shape { fill: #918c78; stroke: #686351; }
+.cell-brood .hex-shape { fill: #a7a18d; stroke: #77715e; }
+.cell-picture, .bee-picture { pointer-events: none; }
+.cell-resource-count { font: 600 21px var(--serif); text-anchor: middle; dominant-baseline: central; fill: #5c4a28; pointer-events: none; }
+.picture-label { font-size: 7px; fill: rgba(255,255,255,.82) !important; }
+.queen-picture { filter: drop-shadow(0 4px 3px rgba(37,28,16,.26)); }
+.nectar-picture { filter: drop-shadow(0 3px 2px rgba(76,50,12,.18)); }
+.brood-picture { filter: drop-shadow(0 3px 3px rgba(53,42,24,.2)); }
+.bee-picture { filter: drop-shadow(0 3px 2px rgba(67,42,10,.28)); }
+
+@media (max-width: 1180px) and (min-width: 901px) {
+  .topbar { grid-template-columns: 150px minmax(330px, 1fr) 210px 220px; gap: 8px; padding-inline: 12px; }
+  .brand-block h1 { font-size: 23px; }
+  .brand-block .eyebrow { display: none; }
+  .resource-chip { min-width: 76px; padding-inline: 6px; }
+}
+
+@media (max-width: 900px) {
+  .topbar { grid-template-columns: minmax(86px, 1fr) auto; grid-template-rows: auto auto 42px; }
+  .season-timeline-button { grid-column: 1 / 3; grid-row: 3; height: 42px; }
+  .resource-icon { width: 28px; height: 28px; }
+}
+
+@media (max-width: 560px) {
+  .topbar { grid-template-rows: auto auto 44px; }
+  .resource-icon { width: 25px; height: 25px; }
+  .season-timeline-button { height: 44px; }
+  .season-timeline-button > b { display: none; }
+}
+
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .topbar { grid-template-columns: minmax(280px, 1fr) minmax(180px, 240px) auto; grid-template-rows: 1fr; }
+  .resource-ribbon { grid-column: 1; grid-row: 1; }
+  .season-timeline-button { grid-column: 2; grid-row: 1; height: 46px; }
+  .year-block { grid-column: 3; grid-row: 1; }
+  .season-timeline-button > b { display: none; }
+}

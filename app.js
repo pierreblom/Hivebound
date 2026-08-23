@@ -26,7 +26,8 @@
     'motionToggle', 'hintsToggle', 'menuBiomeIcon', 'menuRunIdentity', 'crestsModal',
     'archiveProgress', 'crestArchive', 'openMarketButton', 'marketModal', 'mobileMarketPrice',
     'mobileMarketTrend', 'mobileMarketArea',
-    'mobileMarketLine', 'mobileAutoSellToggle', 'mobileReserveInput'
+    'mobileMarketLine', 'mobileAutoSellToggle', 'mobileReserveInput', 'seasonTimelineButton',
+    'seasonTimelineMarker', 'seasonTimelineLabel'
   ].map(id => [id, document.getElementById(id)]));
 
   let state = Core.createInitialState();
@@ -135,6 +136,7 @@
     waitingForYear = false;
     paused = false;
     speed = 1;
+    elements.beeLayer.innerHTML = '';
     beeVisuals = [];
     document.querySelectorAll('.speed-button').forEach(button => button.classList.toggle('active', button.dataset.speed === '1'));
     elements.pauseButton.textContent = 'Ⅱ';
@@ -221,11 +223,29 @@
 
       if (cell) {
         const definition = Core.CELL_TYPES[cell.type];
-        const icon = svg('text', { class: 'cell-icon', x: center.x, y: center.y - 7 });
-        icon.textContent = definition.icon;
-        const label = svg('text', { class: 'cell-label', x: center.x, y: center.y + 24 });
-        label.textContent = definition.short;
-        group.append(icon, label);
+        if (cell.type === 'queen') {
+          group.appendChild(svg('image', { class: 'cell-picture queen-picture', href: 'assets/hive/queen-bee.svg', x: center.x - 34, y: center.y - 42, width: 68, height: 68 }));
+          const label = svg('text', { class: 'cell-label picture-label', x: center.x, y: center.y + 35 });
+          label.textContent = 'QUEEN';
+          group.appendChild(label);
+        } else if (cell.type === 'garden') {
+          const count = svg('text', { class: 'cell-resource-count', x: center.x, y: center.y - 17 });
+          count.textContent = number(state.resources.nectar);
+          group.append(count, svg('image', { class: 'cell-picture nectar-picture', href: 'assets/icons/nectar-flower.svg', x: center.x - 19, y: center.y - 5, width: 38, height: 38 }));
+        } else if (cell.type === 'brood') {
+          const stage = Core.broodStage(cell.brood?.progress || 0);
+          const asset = { egg: 'egg.svg', larva: 'larva.svg', pupa: 'pupa.svg' }[stage] || 'egg.svg';
+          group.appendChild(svg('image', { class: `cell-picture brood-picture brood-${stage}`, href: `assets/hive/${asset}`, x: center.x - 24, y: center.y - 32, width: 48, height: 58 }));
+          const label = svg('text', { class: 'cell-label picture-label', x: center.x, y: center.y + 36 });
+          label.textContent = stage.toUpperCase();
+          group.appendChild(label);
+        } else {
+          const icon = svg('text', { class: 'cell-icon', x: center.x, y: center.y - 7 });
+          icon.textContent = definition.icon;
+          const label = svg('text', { class: 'cell-label', x: center.x, y: center.y + 24 });
+          label.textContent = definition.short;
+          group.append(icon, label);
+        }
         if (Core.cellBonuses(state, coordKey).length) group.appendChild(svg('circle', { class: 'cell-bonus-ring', cx: center.x, cy: center.y, r: HEX_SIZE - 10 }));
       } else if (!locked) {
         const plus = svg('text', { class: 'build-plus', x: center.x, y: center.y + 1 });
@@ -349,9 +369,13 @@
 
   function renderSeason() {
     const season = Core.currentSeason(state);
+    const seasonProgress = clamp(state.yearTime / Core.YEAR_LENGTH, 0, 1);
     elements.seasonIcon.textContent = season.icon;
     elements.seasonName.textContent = season.name;
     elements.seasonEffect.textContent = `${Math.round(season.nectar * 100)}% nectar flow`;
+    elements.seasonTimelineMarker.style.left = `${2 + seasonProgress * 96}%`;
+    elements.seasonTimelineLabel.textContent = season.name;
+    elements.seasonTimelineButton.setAttribute('aria-label', `Current season: ${season.name}. ${season.description}`);
     const active = state.emergency?.remaining > 0;
     const actionNames = { warm: 'Comb warming', mist: 'Cooling mist', rally: 'Worker rally' };
     elements.climateToolsButton.classList.toggle('active', active);
@@ -409,6 +433,17 @@
     elements.nectarValue.textContent = number(state.resources.nectar);
     elements.honeyValue.textContent = number(state.resources.honey);
     elements.coinValue.textContent = number(state.resources.coins);
+    document.querySelectorAll('.cell-resource-count').forEach(label => { label.textContent = number(state.resources.nectar); });
+    document.querySelectorAll('.hex-cell.cell-brood').forEach(node => {
+      const cell = state.cells[node.dataset.key];
+      if (!cell) return;
+      const stage = Core.broodStage(cell.brood?.progress || 0);
+      const asset = { egg: 'egg.svg', larva: 'larva.svg', pupa: 'pupa.svg' }[stage] || 'egg.svg';
+      const picture = node.querySelector('.brood-picture');
+      const label = node.querySelector('.picture-label');
+      if (picture) picture.setAttribute('href', `assets/hive/${asset}`);
+      if (label) label.textContent = stage.toUpperCase();
+    });
     elements.workerValue.textContent = state.workers;
     elements.yearLabel.textContent = `Year ${state.year}`;
     const remaining = Math.max(0, Core.YEAR_LENGTH - state.yearTime);
@@ -566,13 +601,7 @@
 
   function makeBee(index) {
     const node = svg('g', { class: 'bee' });
-    node.append(
-      svg('ellipse', { class: 'bee-wing', cx: -6, cy: -5, rx: 6, ry: 4, transform: 'rotate(-28 -6 -5)' }),
-      svg('ellipse', { class: 'bee-wing', cx: 6, cy: -5, rx: 6, ry: 4, transform: 'rotate(28 6 -5)' }),
-      svg('ellipse', { class: 'bee-body', cx: 0, cy: 0, rx: 8, ry: 5 }),
-      svg('line', { class: 'bee-cargo', x1: -2, y1: -5, x2: -2, y2: 5 }),
-      svg('circle', { cx: 7, cy: 0, r: 2.2, fill: '#2c251d' })
-    );
+    node.appendChild(svg('image', { class: 'bee-picture', href: 'assets/hive/worker-bee.svg', x: -18, y: -14, width: 36, height: 28 }));
     elements.beeLayer.appendChild(node);
     const start = hexCenter(0, 0);
     return { node, index, x: start.x + (index % 3) * 7, y: start.y + Math.floor(index / 3) * 4, startX: start.x, startY: start.y, targetX: start.x, targetY: start.y, started: visualTime, duration: 1, rotation: 0 };
@@ -709,10 +738,10 @@
   }));
   document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.close).classList.remove('visible')));
   elements.climateToolsButton.addEventListener('click', () => elements.climateModal.classList.add('visible'));
-  elements.seasonButton.addEventListener('click', () => {
+  [elements.seasonButton, elements.seasonTimelineButton].forEach(button => button.addEventListener('click', () => {
     const season = Core.currentSeason(state);
     showToast(`${season.name}: ${season.description} Nectar output is ${Math.round(season.nectar * 100)}%.`);
-  });
+  }));
   document.querySelectorAll('.emergency-action').forEach(button => button.addEventListener('click', () => {
     const result = Core.emergencyAction(state, button.dataset.emergency);
     if (!result.ok) return showToast(result.reason);

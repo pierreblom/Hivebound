@@ -31,22 +31,28 @@
 
         <div class="resource-ribbon" aria-label="Colony resources">
           <button class="resource-chip" data-focus="wax" title="Wax is used to build cells">
-            <span class="resource-icon wax-icon">⬡</span>
+            <img class="resource-icon wax-icon" src="assets/icons/wax-comb.svg" alt="" />
             <span><small>Wax</small><strong id="waxValue">140</strong></span>
           </button>
           <button class="resource-chip" data-focus="nectar" title="Nectar is processed into honey">
-            <span class="resource-icon nectar-icon">●</span>
+            <img class="resource-icon nectar-icon" src="assets/icons/nectar-flower.svg" alt="" />
             <span><small>Nectar</small><strong id="nectarValue">35</strong></span>
           </button>
           <button class="resource-chip" data-focus="honey" title="Honey can be sold or delivered to the Crown">
-            <span class="resource-icon honey-icon">◆</span>
+            <img class="resource-icon honey-icon" src="assets/icons/honey-jar.svg" alt="" />
             <span><small>Honey</small><strong id="honeyValue">0</strong></span>
           </button>
           <button class="resource-chip" data-focus="coins" title="Crowns buy expeditions and emergency supplies">
-            <span class="resource-icon coin-icon">●</span>
+            <img class="resource-icon coin-icon" src="assets/icons/crown-coins.svg" alt="" />
             <span><small>Crowns</small><strong id="coinValue">90</strong></span>
           </button>
         </div>
+
+        <button id="seasonTimelineButton" class="season-timeline-button" aria-label="Current season: First Thaw">
+          <img src="assets/illustrations/season-cycle.png" alt="" />
+          <span id="seasonTimelineMarker" class="season-timeline-marker" aria-hidden="true"></span>
+          <b id="seasonTimelineLabel">First Thaw</b>
+        </button>
 
         <div class="year-block">
           <div class="year-heading"><span id="yearLabel">Year 1</span><span id="daysLabel">90 days</span></div>

@@ -4,6 +4,8 @@ Hivebound is an original, touch-friendly bee-colony engine-builder prototype. Ar
 
 Version 0.2 adds four changing seasons, four distinct biomes, three difficulty modes, emergency climate responses, individual egg/larva/pupa development, adjustable foraging crews, market standing orders, detailed year reports, paid Crest rerolls, a Crest Archive, and persistent accessibility/settings controls. The interface is now a mobile-first installable web app with phone-safe portrait and landscape layouts, large touch targets, safe-area support, an offline shell, and a compact market desk for small screens.
 
+The live HUD now uses illustrated resource artwork and a four-season panorama. Hive cells also communicate their purpose visually: workers visit golden Nectar Gardens, the crowned Queen remains in her central chamber, and Brood Nurseries visibly progress from egg to larva to pupa.
+
 ## Play locally
 
 ```bash
@@ -29,6 +31,10 @@ No package installation is required. The game uses only browser-native HTML, CSS
 Progress saves automatically in the browser.
 
 On a phone, use **Add to Home Screen** (iOS) or **Install app** (Android/Chrome) to launch Hivebound like a standalone mobile game. Portrait and landscape are both supported.
+
+## Deploy to Vercel
+
+The included `vercel.json` forces Vercel to treat Hivebound as a static game. Vercel runs `npm run build` and deploys only the generated `dist` directory; the local Node development server is never bundled as a production function.
 
 ## Test
 
