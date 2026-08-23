@@ -1,4 +1,4 @@
-const CACHE = 'hivebound-v0.3.0';
+const CACHE = 'hivebound-v0.4.0';
 const LOCAL_ASSETS = [
   '/', '/index.html', '/styles.css', '/game-core.js', '/app.js', '/manifest.webmanifest',
   '/icons/hivebound-icon.svg', '/icons/hivebound-icon-192.png', '/icons/hivebound-icon-512.png',

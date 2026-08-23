@@ -2,9 +2,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Core = require('../game-core.js');
 
-test('initial colony has a Queen and a buildable first ring', () => {
+test('initial colony matches the illustrated five-cell starter hive', () => {
   const state = Core.createInitialState(42);
   assert.equal(state.cells['0,0'].type, 'queen');
+  assert.equal(state.cells['0,-1'].type, 'processor');
+  assert.equal(state.cells['1,-1'].type, 'processor');
+  assert.equal(state.cells['-1,0'].type, 'garden');
+  assert.equal(state.cells['-1,1'].type, 'brood');
+  assert.equal(state.cells['-1,1'].brood.stage, 'egg');
+  assert.equal(Object.keys(state.cells).length, 5);
+  assert.equal(state.quota.target, 10);
+  assert.equal(Core.YEAR_LENGTH, 180);
   assert.equal(Core.canBuild(state, '1,0', 'garden').ok, true);
   assert.equal(Core.canBuild(state, '2,0', 'garden').ok, false);
 });
@@ -12,7 +20,7 @@ test('initial colony has a Queen and a buildable first ring', () => {
 test('building spends wax and adjacency is recognized', () => {
   const state = Core.createInitialState(42);
   assert.equal(Core.buildCell(state, '1,0', 'processor').ok, true);
-  assert.equal(Core.buildCell(state, '1,-1', 'honey').ok, true);
+  assert.equal(Core.buildCell(state, '0,1', 'honey').ok, true);
   assert.equal(state.resources.wax, 82);
   const bonuses = Core.cellBonuses(state, '1,0');
   assert.deepEqual(bonuses.map(item => item.value), [10, 12]);
@@ -20,9 +28,6 @@ test('building spends wax and adjacency is recognized', () => {
 
 test('a garden and refinery form a working economy', () => {
   const state = Core.createInitialState(42);
-  Core.buildCell(state, '1,0', 'garden');
-  Core.buildCell(state, '0,1', 'processor');
-  Core.buildCell(state, '-1,1', 'honey');
   const beforeNectar = state.resources.nectar;
   for (let index = 0; index < 20; index += 1) Core.step(state, .5, () => .5);
   assert.ok(state.resources.honey > 0);
@@ -47,7 +52,7 @@ test('delivering quota advances only after a crest is chosen', () => {
   assert.equal(Core.chooseUpgradeAndAdvance(state, 'goldenComb').ok, true);
   assert.equal(state.year, 2);
   assert.equal(state.seals[0], 'goldenComb');
-  assert.equal(state.quota.target, 86);
+  assert.equal(state.quota.target, 17);
 });
 
 test('market sales honor permanent trader crests', () => {
@@ -76,12 +81,11 @@ test('expedition returns resources and can lose a worker', () => {
 test('climate ventilation offsets a busy refinery', () => {
   const hot = Core.createInitialState(42);
   Core.buildCell(hot, '1,0', 'processor');
-  Core.buildCell(hot, '1,-1', 'processor');
-  Core.buildCell(hot, '0,-1', 'processor');
+  Core.buildCell(hot, '0,1', 'processor');
   const hotClimate = Core.climate(hot);
 
   const vented = structuredClone(hot);
-  Core.buildCell(vented, '-1,0', 'vent');
+  Core.buildCell(vented, '-2,1', 'vent');
   assert.ok(Core.climate(vented).temperature < hotClimate.temperature);
 });
 
@@ -89,7 +93,7 @@ test('biomes and difficulty configure a new colony', () => {
   const state = Core.createInitialState(42, { biome: 'coast', difficulty: 'crown' });
   assert.equal(Core.currentBiome(state).name, 'Saltwind Coast');
   assert.equal(Core.currentDifficulty(state).name, 'Crown’s Trial');
-  assert.equal(state.quota.target, 64);
+  assert.equal(state.quota.target, 13);
   assert.ok(Core.climate(state).humidity > Core.climate(Core.createInitialState(42)).humidity);
 });
 
@@ -157,7 +161,7 @@ test('version one saves migrate with brood lifecycle data', () => {
   delete old.cells['1,0'].brood;
   old.broodProgress = .5;
   const migrated = Core.normalizeState(old);
-  assert.equal(migrated.version, 2);
+  assert.equal(migrated.version, 3);
   assert.equal(migrated.cells['1,0'].brood.stage, 'larva');
 });
 

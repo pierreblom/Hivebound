@@ -5,8 +5,9 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  const YEAR_LENGTH = 90;
-  const SAVE_VERSION = 2;
+  const YEAR_LENGTH = 180;
+  const BASE_QUOTA = 10;
+  const SAVE_VERSION = 3;
 
   const BIOMES = {
     sunmeadow: { id: 'sunmeadow', name: 'Sunmeadow Vale', icon: '✿', tagline: 'Balanced seasons and generous wildflowers.', temperature: 0, humidity: 0, nectar: 1, wax: 1, color: '#8fba67' },
@@ -121,10 +122,16 @@
       radius: 2,
       config: { biome: biome.id, difficulty: difficulty.id },
       resources: { wax: 140, nectar: 35, honey: 0, coins: 90 },
-      quota: { target: Math.round(50 * difficulty.quota), delivered: 0 },
+      quota: { target: Math.round(BASE_QUOTA * difficulty.quota), delivered: 0 },
       workers: 4,
       lostWorkers: 0,
-      cells: { '0,0': { type: 'queen', builtAt: 0 } },
+      cells: {
+        '0,-1': { type: 'processor', builtAt: 0 },
+        '1,-1': { type: 'processor', builtAt: 0 },
+        '-1,0': { type: 'garden', builtAt: 0 },
+        '0,0': { type: 'queen', builtAt: 0 },
+        '-1,1': { type: 'brood', builtAt: 0, brood: { progress: 0, stage: 'egg' } }
+      },
       seals: [],
       market: { price: 12.4, history: [9.8, 10.7, 10.2, 11.5, 10.9, 11.7, 12.4], timer: 0, autoSell: false, reserve: 10 },
       broodProgress: 0,
@@ -479,7 +486,7 @@
     state.stats.yearsCompleted += 1;
     state.year += 1;
     state.yearTime = 0;
-    state.quota = { target: Math.round(50 * Math.pow(1.72, state.year - 1) * currentDifficulty(state).quota), delivered: 0 };
+    state.quota = { target: Math.round(BASE_QUOTA * Math.pow(1.72, state.year - 1) * currentDifficulty(state).quota), delivered: 0 };
     state.flags.raidResolved = false;
     state.flags.seasonIndex = 0;
     state.flags.upgradeRerolls = 0;
@@ -496,7 +503,7 @@
 
   function normalizeState(raw) {
     const fresh = createInitialState(raw?.seed || Date.now(), raw?.config || {});
-    if (!raw || ![1, SAVE_VERSION].includes(raw.version)) return fresh;
+    if (!raw || ![1, 2, SAVE_VERSION].includes(raw.version)) return fresh;
     const merged = {
       ...fresh,
       ...raw,
@@ -516,7 +523,7 @@
   }
 
   return {
-    YEAR_LENGTH, CELL_TYPES, UPGRADES, FORAGE_LOCATIONS, BIOMES, DIFFICULTIES, SEASONS,
+    YEAR_LENGTH, BASE_QUOTA, CELL_TYPES, UPGRADES, FORAGE_LOCATIONS, BIOMES, DIFFICULTIES, SEASONS,
     key, parseKey, distance, axialCoordinates, neighbors, seededRandom,
     createInitialState, normalizeState, countCells, adjacentCount, cellCost,
     canBuild, buildCell, demolishCell, cellBonuses, climate, storageCapacity,

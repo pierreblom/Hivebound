@@ -179,7 +179,7 @@ button, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action
   body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   input { -webkit-user-select: text; user-select: text; }
   .game-shell {
-    width: 100%; height: 100dvh; min-height: 0; overflow: hidden;
+    width: 100%; height: 100svh; min-height: 0; overflow: hidden;
     grid-template-rows: auto minmax(0, 1fr) auto;
   }
   .topbar {
@@ -227,7 +227,7 @@ button, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action
   .zoom-controls { bottom: 10px; }
   .selection-card { max-height: calc(100% - 20px); overflow: auto; }
   .modal-backdrop { padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
-  .modal { width: min(620px, 100%); max-height: calc(100dvh - 20px); }
+  .modal { width: min(620px, 100%); max-height: calc(100svh - 20px); }
   .modal-close, .close-button { min-width: 44px; min-height: 44px; }
   .choice-card, .setup-choice, .menu-nav, .primary-button, .secondary-button, .text-button { min-height: 48px; }
 }
@@ -293,8 +293,8 @@ button, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action
   .zoom-controls { bottom: 6px; }
   .toast { top: 8px; }
   .modal-backdrop { padding: 8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left)); }
-  .modal { max-height: calc(100dvh - 16px); }
-  .welcome-modal { width: min(760px, 100%); height: calc(100dvh - 16px); grid-template-columns: .78fr 1.22fr; grid-template-rows: 1fr; }
+  .modal { max-height: calc(100svh - 16px); }
+  .welcome-modal { width: min(760px, 100%); height: calc(100svh - 16px); grid-template-columns: .78fr 1.22fr; grid-template-rows: 1fr; }
   .welcome-visual { height: auto; min-height: 0; }
   .hero-comb { transform: translate(-50%, -50%) scale(.55); }
   .welcome-copy { justify-content: center; padding: 18px 25px; }

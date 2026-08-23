@@ -46,6 +46,8 @@
   let selectedBiome = 'sunmeadow';
   let selectedDifficulty = 'worker';
   let broodCoord = null;
+  let lastBuildOptionsKey = '';
+  let lastSealListKey = '';
   const forageCrew = {};
   let settings = { sound: true, reducedMotion: false, hints: true };
   const random = Math.random;
@@ -142,10 +144,10 @@
     elements.pauseButton.textContent = 'Ⅱ';
     elements.pauseButton.classList.add('active');
     closeAllModals();
-    report('☀', 'A gentle beginning', 'Build a garden first, then connect a refinery and a honey vault.');
+    report('☀', 'The first comb is ready', 'Your garden feeds two refineries while the Queen tends a new egg.');
     renderBoard();
     render(true);
-    if (settings.hints) showToast('Choose a Nectar Garden below, then place it beside the Queen.');
+    if (settings.hints) showToast('Your starter hive is working—let it make 10 honey for the Crown.');
   }
 
   function openSetup() {
@@ -185,6 +187,9 @@
 
   function renderBuildOptions() {
     const types = ['garden', 'processor', 'honey', 'brood', 'vent', 'guard'];
+    const renderKey = [selectedBuild || 'none', state.year, Math.floor(state.resources.wax), ...types.map(type => Core.cellCost(state, type))].join('|');
+    if (renderKey === lastBuildOptionsKey) return;
+    lastBuildOptionsKey = renderKey;
     elements.buildOptions.innerHTML = '';
     types.forEach(type => {
       const definition = Core.CELL_TYPES[type];
@@ -318,7 +323,8 @@
     elements.selectionType.textContent = `Hive cell • ${coordKey}`;
     elements.selectionName.textContent = definition.name;
     elements.selectionDescription.textContent = definition.description;
-    elements.selectionStats.innerHTML = cellStats(coordKey).map(([label, value]) => `<span><b>${value}</b>${label}</span>`).join('');
+    const statsMarkup = cellStats(coordKey).map(([label, value]) => `<span><b>${value}</b>${label}</span>`).join('');
+    if (elements.selectionStats.innerHTML !== statsMarkup) elements.selectionStats.innerHTML = statsMarkup;
     elements.tendBroodButton.classList.toggle('hidden', cell.type !== 'brood');
     elements.demolishButton.classList.toggle('hidden', cell.type === 'queen');
     elements.selectionCard.classList.remove('hidden');
@@ -403,23 +409,30 @@
 
   function renderExpedition() {
     if (!state.expedition) {
-      elements.activeExpedition.className = 'expedition-empty';
-      elements.activeExpedition.innerHTML = '<span>✿</span><div><b>No swarm afield</b><small>Send bees to gather nectar and wax.</small></div>';
+      const emptyMarkup = '<span>✿</span><div><b>No swarm afield</b><small>Send bees to gather nectar and wax.</small></div>';
+      if (elements.activeExpedition.dataset.mode !== 'empty') {
+        elements.activeExpedition.dataset.mode = 'empty';
+        elements.activeExpedition.innerHTML = emptyMarkup;
+      }
       return;
     }
     const location = Core.FORAGE_LOCATIONS.find(item => item.id === state.expedition.locationId);
     const progress = clamp(state.expedition.elapsed / state.expedition.duration * 100, 0, 100);
-    elements.activeExpedition.className = 'expedition-empty';
-    elements.activeExpedition.innerHTML = `<span>${location.icon}</span><div><b>${location.name}</b><small>${state.expedition.bees} bees • ${Math.ceil(state.expedition.duration - state.expedition.elapsed)}s away</small><div class="expedition-progress"><i style="width:${progress}%"></i></div></div>`;
+    const expeditionKey = `${location.id}|${state.expedition.bees}`;
+    if (elements.activeExpedition.dataset.mode !== expeditionKey) {
+      elements.activeExpedition.dataset.mode = expeditionKey;
+      elements.activeExpedition.innerHTML = `<span>${location.icon}</span><div><b>${location.name}</b><small></small><div class="expedition-progress"><i></i></div></div>`;
+    }
+    elements.activeExpedition.querySelector('small').textContent = `${state.expedition.bees} bees • ${Math.ceil(state.expedition.duration - state.expedition.elapsed)}s away`;
+    elements.activeExpedition.querySelector('.expedition-progress i').style.width = `${progress}%`;
   }
 
   function renderSeals() {
     elements.sealCount.textContent = `${state.seals.length} crests`;
-    if (!state.seals.length) {
-      elements.sealList.innerHTML = '<p class="empty-copy">Complete a year to earn your first permanent crest.</p>';
-      return;
-    }
-    elements.sealList.innerHTML = state.seals.map(id => {
+    const sealKey = state.seals.join('|') || 'empty';
+    if (sealKey === lastSealListKey) return;
+    lastSealListKey = sealKey;
+    elements.sealList.innerHTML = !state.seals.length ? '<p class="empty-copy">Complete a year to earn your first permanent crest.</p>' : state.seals.map(id => {
       const upgrade = Core.UPGRADES.find(item => item.id === id);
       return `<span class="seal-token" title="${upgrade.name}: ${upgrade.description}">${upgrade.icon}</span>`;
     }).join('');
