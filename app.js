@@ -27,7 +27,11 @@
     'archiveProgress', 'crestArchive', 'openMarketButton', 'marketModal', 'mobileMarketPrice',
     'mobileMarketTrend', 'mobileMarketArea',
     'mobileMarketLine', 'mobileAutoSellToggle', 'mobileReserveInput', 'seasonTimelineButton',
-    'seasonTimelineMarker', 'seasonTimelineLabel'
+    'seasonTimelineMarker', 'seasonTimelineLabel', 'levelButton', 'levelValue', 'levelProgress',
+    'upgradeCellButton', 'beeProfile', 'closeBeeProfile', 'beeProfileName', 'beeProfileStatus',
+    'beeProfileLikes', 'beeProfileDislikes', 'forageStatus', 'showStats', 'statsModal', 'statsContent',
+    'levelUpModal', 'levelUpNumber', 'levelUpgradeChoices', 'raidModal', 'raidAttack', 'raidDefense',
+    'sealDiscoveryModal', 'sealDiscoveryName', 'sealDiscoveryText', 'continueSealDiscovery'
   ].map(id => [id, document.getElementById(id)]));
 
   let state = Core.createInitialState();
@@ -48,7 +52,12 @@
   let broodCoord = null;
   let lastBuildOptionsKey = '';
   let lastSealListKey = '';
+  let lastForageKey = '';
+  let pendingYearEnd = false;
   const forageCrew = {};
+  const beeNames = ['Mallow Wingstead', 'Clover Quickwing', 'Pip Honeyfoot', 'Tansy Goldstripe', 'Bramble Bright', 'Ursula Beedle', 'Cecily Pollenby', 'Tilly Hivesworth', 'Juniper Buzz'];
+  const beeLikes = ['warm comb and clover tea', 'sorting jars by stickiness', 'the acoustics of cell seven', 'sunflower pollen at dawn', 'short flights and long naps'];
+  const beeDislikes = ['rain with no warning', 'cold wax', 'farm birds', 'empty nectar stores', 'wasps before breakfast'];
   let settings = { sound: true, reducedMotion: false, hints: true };
   const random = Math.random;
 
@@ -170,7 +179,7 @@
   }
 
   function renderCrestArchive() {
-    const discovered = new Set(state.seals);
+    const discovered = new Set([...state.seals, ...(state.discoveries || [])]);
     elements.archiveProgress.textContent = `${discovered.size} / ${Core.UPGRADES.length} discovered`;
     elements.crestArchive.innerHTML = Core.UPGRADES.map(upgrade => `<article class="archive-crest${discovered.has(upgrade.id) ? '' : ' locked'}"><span class="seal-token">${discovered.has(upgrade.id) ? upgrade.icon : '?'}</span><h3>${discovered.has(upgrade.id) ? upgrade.name : 'Undiscovered crest'}</h3><p>${discovered.has(upgrade.id) ? upgrade.description : 'Complete more years to reveal this royal modifier.'}</p><span class="rarity ${upgrade.rarity}">${upgrade.rarity}</span></article>`).join('');
   }
@@ -198,7 +207,7 @@
       button.className = `build-option${selectedBuild === type ? ' selected' : ''}${state.resources.wax < cost ? ' unaffordable' : ''}`;
       button.dataset.type = type;
       button.title = definition.description;
-      button.innerHTML = `<span class="build-icon" style="background:${definition.color}">${definition.icon}</span><b>${definition.short}</b><small>${cost} wax</small><em>${type === 'guard' && state.year < 3 ? 'RAIDS Y3' : ''}</em>`;
+      button.innerHTML = `<span class="build-icon" style="background:${definition.color}">${definition.icon}</span><b>${definition.short}</b><small>${cost} wax</small><em>${type === 'guard' ? 'ANNUAL RAID' : ''}</em>`;
       button.addEventListener('click', () => {
         selectedBuild = selectedBuild === type ? null : type;
         selectedCell = null;
@@ -215,6 +224,11 @@
   function renderBoard() {
     elements.gridLayer.innerHTML = '';
     elements.bonusLayer.innerHTML = '';
+    const queenCenter = hexCenter(0, 0);
+    elements.bonusLayer.appendChild(svg('circle', {
+      class: 'pheromone-ring', cx: queenCenter.x, cy: queenCenter.y,
+      r: HEX_SIZE * Math.sqrt(3) * (Core.pheromoneRadius(state) + .16)
+    }));
     const visibleRadius = Math.min(3, state.radius + 1);
     const coords = Core.axialCoordinates(visibleRadius).sort((a, b) => Core.distance(a.q, a.r) - Core.distance(b.q, b.r));
     coords.forEach(({ q, r }) => {
@@ -235,7 +249,7 @@
           group.appendChild(label);
         } else if (cell.type === 'garden') {
           const count = svg('text', { class: 'cell-resource-count', x: center.x, y: center.y - 17 });
-          count.textContent = number(state.resources.nectar);
+          count.textContent = number(Core.nectarPerGarden(state));
           group.append(count, svg('image', { class: 'cell-picture nectar-picture', href: 'assets/icons/nectar-flower.svg', x: center.x - 19, y: center.y - 5, width: 38, height: 38 }));
         } else if (cell.type === 'brood') {
           const stage = Core.broodStage(cell.brood?.progress || 0);
@@ -250,6 +264,11 @@
           const label = svg('text', { class: 'cell-label', x: center.x, y: center.y + 24 });
           label.textContent = definition.short;
           group.append(icon, label);
+        }
+        if (cell.type !== 'queen' && (cell.level || 1) > 1) {
+          const badge = svg('text', { class: 'cell-level', x: center.x + 31, y: center.y - 30 });
+          badge.textContent = `L${cell.level}`;
+          group.appendChild(badge);
         }
         if (Core.cellBonuses(state, coordKey).length) group.appendChild(svg('circle', { class: 'cell-bonus-ring', cx: center.x, cy: center.y, r: HEX_SIZE - 10 }));
       } else if (!locked) {
@@ -298,19 +317,20 @@
     renderBuildOptions();
     render(true);
     saveGame();
+    maybeShowLevelUp();
   }
 
   function cellStats(coordKey) {
     const cell = state.cells[coordKey];
     const bonuses = Core.cellBonuses(state, coordKey);
     const total = bonuses.reduce((sum, item) => sum + item.value, 0);
-    if (cell.type === 'queen') return [['Colony', `${state.workers} workers`], ['Protection', state.year < 3 ? 'Peaceful' : `${Core.raidStrength(state)} threat`]];
-    if (cell.type === 'garden') return [['Nectar', `${(.42 * (1 + total / 100)).toFixed(2)}/s`], ['Adjacency', `+${total}%`]];
+    if (cell.type === 'queen') return [['Colony', `${state.workers} workers`], ['Pheromone range', `${Core.pheromoneRadius(state)} rings`], ['Pheromone power', `+${Math.round(Core.pheromonePower(state) * 100)}%`], ['Annual wasp threat', `${Math.round(Core.raidStrength(state))}`]];
+    if (cell.type === 'garden') return [['Stored nectar', number(Core.nectarPerGarden(state))], ['Nectar', `${(.42 * (1 + total / 100)).toFixed(2)}/s`], ['Adjacency', `+${total}%`]];
     if (cell.type === 'processor') return [['Honey', `${(.34 * (1 + total / 100)).toFixed(2)}/s`], ['Adjacency', `+${total}%`]];
     if (cell.type === 'honey') return [['Total capacity', number(Core.storageCapacity(state))], ['Adjacency', `+${total}%`]];
     if (cell.type === 'brood') return [['Life stage', `${cell.brood?.stage || 'egg'}`], ['Hatch progress', `${Math.round((cell.brood?.progress || 0) * 100)}%`]];
     if (cell.type === 'vent') return [['Cooling', '−3.2°C'], ['Fresh air', '+12%']];
-    if (cell.type === 'guard') return [['Defence', `${Math.round(18 * (1 + Core.sealBonus(state, 'defense')))}`], ['Raid', state.year < 3 ? 'Year 3' : 'Active']];
+    if (cell.type === 'guard') return [['Defence', `${Math.round(18 * (1 + Core.sealBonus(state, 'defense')))}`], ['Raid', 'Every year']];
     return [];
   }
 
@@ -326,6 +346,10 @@
     const statsMarkup = cellStats(coordKey).map(([label, value]) => `<span><b>${value}</b>${label}</span>`).join('');
     if (elements.selectionStats.innerHTML !== statsMarkup) elements.selectionStats.innerHTML = statsMarkup;
     elements.tendBroodButton.classList.toggle('hidden', cell.type !== 'brood');
+    const maxed = (cell.level || 1) >= 3;
+    elements.upgradeCellButton.classList.toggle('hidden', cell.type === 'queen');
+    elements.upgradeCellButton.textContent = maxed ? 'Cell fully upgraded' : `Upgrade to level ${(cell.level || 1) + 1} • ${(cell.level || 1) * 100} crowns`;
+    elements.upgradeCellButton.disabled = maxed || state.resources.coins < (cell.level || 1) * 100;
     elements.demolishButton.classList.toggle('hidden', cell.type === 'queen');
     elements.selectionCard.classList.remove('hidden');
   }
@@ -378,7 +402,7 @@
     const seasonProgress = clamp(state.yearTime / Core.YEAR_LENGTH, 0, 1);
     elements.seasonIcon.textContent = season.icon;
     elements.seasonName.textContent = season.name;
-    elements.seasonEffect.textContent = `${Math.round(season.nectar * 100)}% nectar flow`;
+    elements.seasonEffect.textContent = season.id === 'frost' ? 'Workers resting • no production' : `${Math.round(season.nectar * 100)}% nectar flow`;
     elements.seasonTimelineMarker.style.left = `${2 + seasonProgress * 96}%`;
     elements.seasonTimelineLabel.textContent = season.name;
     elements.seasonTimelineButton.setAttribute('aria-label', `Current season: ${season.name}. ${season.description}`);
@@ -403,11 +427,19 @@
     elements.broodStageText.textContent = stages[stage].text;
     elements.broodProgressBar.style.width = `${Math.round(progress * 100)}%`;
     const hatchRate = Core.productionRates(state).hatch / Math.max(1, Core.countCells(state, 'brood'));
-    elements.broodTime.textContent = hatchRate ? `About ${Math.ceil((1 - progress) / hatchRate)} days until hatching` : 'The brood is waiting for a functioning colony';
+    elements.broodTime.textContent = Core.currentSeason(state).id === 'frost' ? 'Brood rests until spring' : hatchRate ? `About ${Math.ceil((1 - progress) / hatchRate)} days until hatching` : 'The brood is waiting for a functioning colony';
     document.querySelectorAll('.feed-brood').forEach(button => { button.disabled = state.resources.honey < Number(button.dataset.feed); });
   }
 
   function renderExpedition() {
+    if (!state.expedition && state.progression.scouting) {
+      const location = Core.FORAGE_LOCATIONS.find(item => item.id === state.progression.scouting.locationId);
+      const progress = clamp(state.progression.scouting.elapsed / state.progression.scouting.duration * 100, 0, 100);
+      const markup = `<span>⌕</span><div><b>Scouting ${location.name}</b><small>${Core.currentSeason(state).id === 'frost' ? 'Waiting for spring' : `${Math.ceil(state.progression.scouting.duration - state.progression.scouting.elapsed)}s remaining`}</small><div class="expedition-progress"><i style="width:${progress}%"></i></div></div>`;
+      elements.activeExpedition.dataset.mode = `scout-${location.id}`;
+      elements.activeExpedition.innerHTML = markup;
+      return;
+    }
     if (!state.expedition) {
       const emptyMarkup = '<span>✿</span><div><b>No swarm afield</b><small>Send bees to gather nectar and wax.</small></div>';
       if (elements.activeExpedition.dataset.mode !== 'empty') {
@@ -423,7 +455,7 @@
       elements.activeExpedition.dataset.mode = expeditionKey;
       elements.activeExpedition.innerHTML = `<span>${location.icon}</span><div><b>${location.name}</b><small></small><div class="expedition-progress"><i></i></div></div>`;
     }
-    elements.activeExpedition.querySelector('small').textContent = `${state.expedition.bees} bees • ${Math.ceil(state.expedition.duration - state.expedition.elapsed)}s away`;
+    elements.activeExpedition.querySelector('small').textContent = Core.currentSeason(state).id === 'frost' ? `${state.expedition.bees} bees • waiting for spring` : `${state.expedition.bees} bees • ${Math.ceil(state.expedition.duration - state.expedition.elapsed)}s away`;
     elements.activeExpedition.querySelector('.expedition-progress i').style.width = `${progress}%`;
   }
 
@@ -446,7 +478,10 @@
     elements.nectarValue.textContent = number(state.resources.nectar);
     elements.honeyValue.textContent = number(state.resources.honey);
     elements.coinValue.textContent = number(state.resources.coins);
-    document.querySelectorAll('.cell-resource-count').forEach(label => { label.textContent = number(state.resources.nectar); });
+    elements.levelValue.textContent = state.progression.level;
+    elements.levelProgress.style.width = `${clamp(state.progression.xp / state.progression.nextXp * 100, 0, 100)}%`;
+    elements.levelButton.classList.toggle('ready', state.progression.pendingLevels > 0);
+    document.querySelectorAll('.cell-resource-count').forEach(label => { label.textContent = number(Core.nectarPerGarden(state)); });
     document.querySelectorAll('.hex-cell.cell-brood').forEach(node => {
       const cell = state.cells[node.dataset.key];
       if (!cell) return;
@@ -467,7 +502,7 @@
     elements.quotaTarget.textContent = number(state.quota.target);
     elements.quotaProgress.style.width = `${clamp(state.quota.delivered / state.quota.target * 100, 0, 100)}%`;
     elements.deliverButton.disabled = state.resources.honey < 1 || state.quota.delivered >= state.quota.target;
-    elements.stageTitle.textContent = state.year >= 3 && !state.flags.raidResolved ? 'Grow strong. The wasps are watching.' : 'Make the hive hum';
+    elements.stageTitle.textContent = Core.currentSeason(state).id === 'frost' ? 'The hive rests until spring.' : !state.flags.raidResolved ? 'Grow strong. Wasps attack every year.' : 'Make the hive hum';
     renderMarket();
     renderClimate();
     renderSeason();
@@ -478,22 +513,57 @@
     document.body.dataset.biome = state.config?.biome || 'sunmeadow';
     if (selectedCell && state.cells[selectedCell]) showSelection(selectedCell);
     if (elements.broodModal.classList.contains('visible')) renderBroodModal();
+    if (elements.forageModal.classList.contains('visible')) renderForageChoices();
   }
 
   function renderForageChoices() {
+    const renderKey = [Math.floor(state.resources.coins), state.workers, Core.currentSeason(state).id, state.expedition?.locationId || '', state.progression.scouting?.locationId || '', Math.floor(state.progression.scouting?.elapsed || 0), state.progression.level, state.progression.discoveredLocations.join(','), JSON.stringify(state.progression.forageUpgrades), ...Object.values(forageCrew)].join('|');
+    if (renderKey === lastForageKey) return;
+    lastForageKey = renderKey;
     elements.forageChoices.innerHTML = '';
+    const winter = Core.currentSeason(state).id === 'frost';
+    const away = state.expedition?.bees || 0;
+    elements.forageStatus.innerHTML = `<span><b>${Math.max(0, state.workers - away - (state.progression.scouting ? 1 : 0))}</b> in hive</span><span><b>${away}</b> foraging</span><span><b>${state.progression.scouting ? 1 : 0}</b> scouting</span><span><b>Level ${state.progression.level}</b></span>`;
     Core.FORAGE_LOCATIONS.forEach(location => {
+      const unlockedByLevel = state.progression.level >= location.level;
+      const discovered = state.progression.discoveredLocations.includes(location.id);
       forageCrew[location.id] = Math.max(location.bees, forageCrew[location.id] || location.bees);
       const crew = forageCrew[location.id];
-      const unavailable = state.expedition || state.resources.coins < location.cost;
+      const unavailable = winter || state.expedition || state.resources.coins < location.cost;
       const crewUnavailable = state.workers < crew + 1;
       const card = document.createElement('article');
-      card.className = `choice-card forage-choice${unavailable ? ' disabled' : ''}`;
+      card.className = `choice-card forage-choice${unavailable || !discovered ? ' disabled' : ''}${!unlockedByLevel ? ' locked-field' : ''}`;
+      if (!unlockedByLevel) {
+        card.innerHTML = `<span class="choice-art">🔒</span><h3>${location.name}</h3><p>${location.description}</p><strong class="field-lock">Unlocks at level ${location.level}</strong>`;
+        elements.forageChoices.appendChild(card);
+        return;
+      }
+      if (!discovered) {
+        const scouting = state.progression.scouting?.locationId === location.id;
+        const progress = scouting ? Math.round(state.progression.scouting.elapsed / state.progression.scouting.duration * 100) : 0;
+        card.innerHTML = `<span class="choice-art">${location.icon}</span><h3>${location.name}</h3><p>${location.description}</p>${scouting ? `<div class="scout-progress"><i style="width:${progress}%"></i></div><strong>${winter ? 'Waiting for spring' : `${Math.max(0, Math.ceil(state.progression.scouting.duration - state.progression.scouting.elapsed))}s to map`}</strong>` : `<button class="launch-expedition scout-location">Send a scout • ${location.scoutCost} crowns</button><small class="choice-cost">One worker maps the field before swarms can launch.</small>`}`;
+        card.querySelector('.scout-location')?.addEventListener('click', () => {
+          const result = Core.startScouting(state, location.id);
+          if (!result.ok) return showToast(result.reason);
+          lastForageKey = '';
+          report('⌕', 'Scout dispatched', `${location.name} will be mapped before a swarm can forage there.`);
+          renderForageChoices(); render(true); saveGame();
+        });
+        elements.forageChoices.appendChild(card);
+        return;
+      }
       const yieldAmount = Math.round(location.nectar * (1 + (crew - location.bees) * .28));
       const duration = Math.round(location.duration / (1 + (crew - location.bees) * .16));
-      card.innerHTML = `<span class="choice-art">${location.icon}</span><h3>${location.name}</h3><p>${location.description}</p><div class="choice-meta"><span><b>${yieldAmount}–${Math.round(yieldAmount * 1.2)}</b>Nectar</span><span><b>${Math.round(location.risk * 100)}%</b>Risk</span><span><b>${duration}s</b>Journey</span><span><b>${crew}</b>Crew</span></div><div class="crew-control"><button data-crew="minus" aria-label="Remove a worker">−</button><strong>${crew} workers</strong><button data-crew="plus" aria-label="Add a worker">+</button></div><button class="launch-expedition"${crewUnavailable ? ' disabled' : ''}>${crewUnavailable ? 'Not enough workers' : 'Launch swarm'}</button><small class="choice-cost">${location.cost ? `${location.cost} crowns in supplies` : 'No supply cost'}</small>`;
-      card.querySelector('[data-crew="minus"]').addEventListener('click', () => { forageCrew[location.id] = Math.max(location.bees, crew - 1); renderForageChoices(); });
-      card.querySelector('[data-crew="plus"]').addEventListener('click', () => { forageCrew[location.id] = Math.min(4, crew + 1, state.workers - 1); renderForageChoices(); });
+      const owned = state.progression.forageUpgrades[location.id] || [];
+      const fieldUpgrades = Object.values(Core.FIELD_UPGRADES).map(upgrade => `<button class="field-upgrade${owned.includes(upgrade.id) ? ' owned' : ''}" data-field-upgrade="${upgrade.id}" ${owned.includes(upgrade.id) ? 'disabled' : ''}><span>${upgrade.icon}</span><b>${upgrade.name}</b><small>${owned.includes(upgrade.id) ? 'Active' : `${upgrade.cost} crowns`}</small></button>`).join('');
+      card.innerHTML = `<span class="choice-art">${location.icon}</span><h3>${location.name}</h3><p>${location.description}</p><div class="choice-meta"><span><b>${yieldAmount}–${Math.round(yieldAmount * 1.2)}</b>Nectar</span><span><b>${Math.round(location.risk * 100)}%</b>Risk</span><span><b>${duration}s</b>Journey</span><span><b>${crew}</b>Crew</span></div><div class="crew-control"><button data-crew="minus" aria-label="Remove a worker">−</button><strong>${crew} workers</strong><button data-crew="plus" aria-label="Add a worker">+</button></div><button class="launch-expedition"${winter || crewUnavailable ? ' disabled' : ''}>${winter ? 'Winter rest' : crewUnavailable ? 'Not enough workers' : 'Launch swarm'}</button><small class="choice-cost">${winter ? 'Foraging resumes in spring' : location.cost ? `${location.cost} crowns in supplies` : 'No supply cost'}</small><div class="field-upgrades">${fieldUpgrades}</div>`;
+      card.querySelector('[data-crew="minus"]').addEventListener('click', () => { forageCrew[location.id] = Math.max(location.bees, crew - 1); lastForageKey = ''; renderForageChoices(); });
+      card.querySelector('[data-crew="plus"]').addEventListener('click', () => { forageCrew[location.id] = Math.min(4, crew + 1, state.workers - 1); lastForageKey = ''; renderForageChoices(); });
+      card.querySelectorAll('[data-field-upgrade]').forEach(button => button.addEventListener('click', () => {
+        const result = Core.upgradeForageLocation(state, location.id, button.dataset.fieldUpgrade);
+        if (!result.ok) return showToast(result.reason);
+        lastForageKey = ''; renderForageChoices(); render(true); saveGame(); maybeShowLevelUp();
+      }));
       card.querySelector('.launch-expedition').addEventListener('click', () => {
         const result = Core.startExpedition(state, location.id, crew);
         if (!result.ok) return showToast(result.reason);
@@ -502,6 +572,7 @@
         showToast(`Expedition launched to ${location.name}.`);
         tone(720, .12);
         render(true);
+        saveGame();
       });
       elements.forageChoices.appendChild(card);
     });
@@ -558,6 +629,47 @@
     elements.gameOverModal.classList.add('visible');
   }
 
+  function maybeShowLevelUp() {
+    if (state.progression.pendingLevels < 1 || elements.raidModal.classList.contains('visible') || elements.sealDiscoveryModal.classList.contains('visible') || waitingForYear) return;
+    paused = true;
+    elements.pauseButton.textContent = '▶';
+    elements.levelUpNumber.textContent = state.progression.level;
+    elements.levelUpgradeChoices.innerHTML = '';
+    Core.levelUpgradeChoices(state).forEach(upgrade => {
+      const card = document.createElement('button');
+      card.className = 'choice-card level-choice';
+      card.innerHTML = `<span class="choice-art">${upgrade.icon}</span><h3>${upgrade.name}</h3><p>${upgrade.description}</p><small class="choice-cost">Permanent colony upgrade</small>`;
+      card.addEventListener('click', () => {
+        const result = Core.chooseLevelUpgrade(state, upgrade.id);
+        if (!result.ok) return showToast(result.reason);
+        report(upgrade.icon, `${upgrade.name} unlocked`, upgrade.description);
+        showToast(result.addedCells?.length ? `${upgrade.name}: ${result.addedCells.length} free vault${result.addedCells.length > 1 ? 's' : ''} added.` : `${upgrade.name} is now active.`);
+        renderBoard(); render(true); saveGame(); tone(920, .18);
+        if (state.progression.pendingLevels > 0) maybeShowLevelUp();
+        else {
+          elements.levelUpModal.classList.remove('visible');
+          paused = false; elements.pauseButton.textContent = 'Ⅱ';
+        }
+      });
+      elements.levelUpgradeChoices.appendChild(card);
+    });
+    elements.levelUpModal.classList.add('visible');
+  }
+
+  function renderStats() {
+    const owned = state.progression.upgrades.map(id => Core.LEVEL_UPGRADES.find(item => item.id === id)?.name).filter(Boolean);
+    elements.statsContent.innerHTML = `<div class="stats-hero"><span class="level-medal">${state.progression.level}</span><div><small>Colony level</small><b>${state.progression.xp} / ${state.progression.nextXp} XP</b></div></div><div class="stats-grid"><span><b>${state.workers}</b><small>Workers</small></span><span><b>${Object.keys(state.cells).length}</b><small>Cells</small></span><span><b>${number(state.stats.honeyMade)}</b><small>Honey made</small></span><span><b>${state.stats.yearsCompleted}</b><small>Years survived</small></span><span><b>${state.stats.born}</b><small>Born this year</small></span><span><b>${state.stats.lost}</b><small>Lost this year</small></span></div><h3>Level upgrades</h3><div class="upgrade-tags">${owned.length ? owned.map(name => `<span>${name}</span>`).join('') : '<p>No level rewards chosen yet.</p>'}</div>`;
+  }
+
+  function showBeeProfile(index) {
+    const away = state.expedition?.bees || 0;
+    elements.beeProfileName.textContent = beeNames[index % beeNames.length];
+    elements.beeProfileLikes.textContent = beeLikes[index % beeLikes.length];
+    elements.beeProfileDislikes.textContent = beeDislikes[index % beeDislikes.length];
+    elements.beeProfileStatus.textContent = Core.currentSeason(state).id === 'frost' ? 'Resting for winter' : index >= state.workers - away ? 'Foraging beyond the hedge' : 'Working in the hive';
+    elements.beeProfile.classList.remove('hidden');
+  }
+
   function handleEvent(event) {
     if (event.type === 'hatch') {
       report('●', 'A new worker emerges', `Worker ${state.workers} joins the hum.`);
@@ -583,6 +695,33 @@
       showToast(`${event.season.name}: ${event.season.description}`);
       tone(event.season.id === 'frost' ? 310 : 680, .12);
     }
+    if (event.type === 'scoutComplete') {
+      lastForageKey = '';
+      report('⌕', `${event.location.name} mapped`, 'The field is ready for foraging crews and permanent improvements.');
+      showToast(`New forage location unlocked: ${event.location.name}.`);
+    }
+    if (event.type === 'story') report('☷', 'From the worker ledger', event.text);
+    if (event.type === 'siloWarning') {
+      report('!', 'A honey vault has cracked', `Humidity is only ${Math.round(event.humidity)}%. Gather nectar or mist the hive before the vault crumbles.`);
+      showToast('Dry hive warning: a honey vault is cracking.');
+    }
+    if (event.type === 'siloCollapse') {
+      report('!', 'A honey vault crumbled', `${event.lostHoney} honey was lost. Nectar stores help keep the comb humid.`);
+      showToast(`Vault lost to dry air${event.lostHoney ? ` with ${event.lostHoney} honey` : ''}.`);
+      renderBoard();
+    }
+    if (event.type === 'raidStart') {
+      paused = true; elements.pauseButton.textContent = '▶';
+      elements.raidAttack.textContent = event.attack;
+      elements.raidDefense.textContent = Math.round(Core.raidDefense(state));
+      const recall = document.querySelector('[data-raid="recall"]');
+      const hire = document.querySelector('[data-raid="hire"]');
+      recall.disabled = !state.expedition;
+      hire.disabled = state.resources.coins < 75;
+      elements.raidModal.classList.add('visible');
+      report('!', 'Wasps are attacking', 'Choose a defence before the swarm reaches the Queen.');
+      tone(130, .3);
+    }
     if (event.type === 'raid') {
       if (event.victory) {
         report('♜', 'Sentinels hold the line', `Defence ${event.defense} turned back a wasp swarm of strength ${event.attack}.`);
@@ -598,9 +737,18 @@
       }
     }
     if (event.type === 'yearEnd' && !waitingForYear) {
-      if (event.success) showYearModal();
+      if (event.success && elements.sealDiscoveryModal.classList.contains('visible')) pendingYearEnd = true;
+      else if (event.success) showYearModal();
       else showGameOver('quota');
     }
+    if (event.type === 'sealDiscovered') {
+      paused = true;
+      elements.sealDiscoveryName.textContent = event.seal.name;
+      elements.sealDiscoveryText.textContent = event.seal.description;
+      elements.sealDiscoveryModal.classList.add('visible');
+      tone(960, .22);
+    }
+    if (state.progression.pendingLevels > 0) maybeShowLevelUp();
   }
 
   function syncBees() {
@@ -613,9 +761,12 @@
   }
 
   function makeBee(index) {
-    const node = svg('g', { class: 'bee' });
+    const node = svg('g', { class: 'bee', role: 'button', tabindex: '0', 'aria-label': `View ${beeNames[index % beeNames.length]}` });
+    node.appendChild(svg('circle', { class: 'bee-hit-target', cx: 0, cy: 0, r: 24 }));
     node.appendChild(svg('image', { class: 'bee-picture', href: 'assets/hive/worker-bee.svg', x: -18, y: -14, width: 36, height: 28 }));
     elements.beeLayer.appendChild(node);
+    node.addEventListener('click', event => { event.stopPropagation(); showBeeProfile(index); });
+    node.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showBeeProfile(index); });
     const start = hexCenter(0, 0);
     return { node, index, x: start.x + (index % 3) * 7, y: start.y + Math.floor(index / 3) * 4, startX: start.x, startY: start.y, targetX: start.x, targetY: start.y, started: visualTime, duration: 1, rotation: 0 };
   }
@@ -633,12 +784,12 @@
     bee.targetX = target.x + (Math.random() - .5) * 24;
     bee.targetY = target.y + (Math.random() - .5) * 20;
     bee.started = visualTime;
-    bee.duration = 1.4 + Math.random() * 2.1;
+    bee.duration = (1.4 + Math.random() * 2.1) / (1 + Core.levelBonus(state, 'beeSpeed'));
     bee.rotation = Math.atan2(bee.targetY - bee.startY, bee.targetX - bee.startX) * 180 / Math.PI;
   }
 
   function animateBees(dt) {
-    if (!paused) visualTime += dt * speed;
+    if (!paused && Core.currentSeason(state).id !== 'frost') visualTime += dt * speed;
     beeVisuals.forEach(bee => {
       let progress = (visualTime - bee.started) / bee.duration;
       if (progress >= 1) {
@@ -711,6 +862,14 @@
     tone(240);
     renderBoard(); render(true); saveGame();
   });
+  elements.upgradeCellButton.addEventListener('click', () => {
+    if (!selectedCell) return;
+    const result = Core.upgradeCell(state, selectedCell);
+    if (!result.ok) return showToast(result.reason);
+    report('⬡', 'Hive cell upgraded', `This cell is now level ${result.level} and works at ${Math.pow(2, result.level - 1)}× base strength.`);
+    showToast(`Cell upgraded to level ${result.level}.`);
+    renderBoard(); render(true); saveGame(); maybeShowLevelUp(); tone(840, .14);
+  });
   elements.tendBroodButton.addEventListener('click', () => {
     broodCoord = selectedCell;
     renderBroodModal();
@@ -730,7 +889,7 @@
     report('♛', result.complete ? 'The Crown is satisfied' : 'Honey delivered', result.complete ? 'This colony will live to see another year.' : `${Math.floor(result.amount)} honey entered the royal stores.`);
     showToast(result.complete ? 'Annual quota complete!' : `${Math.floor(result.amount)} honey delivered.`);
     tone(result.complete ? 880 : 620, .14);
-    render(true); saveGame();
+    render(true); saveGame(); maybeShowLevelUp();
   });
   document.querySelectorAll('.sell-button').forEach(button => button.addEventListener('click', () => {
     const result = Core.sellHoney(state, button.dataset.sell);
@@ -769,6 +928,21 @@
   elements.saveGameButton.addEventListener('click', () => { saveGame(); showToast('Colony saved to this browser.'); });
   elements.newColonyMenu.addEventListener('click', () => { elements.menuModal.classList.remove('visible'); openSetup(); });
   elements.showCrests.addEventListener('click', () => { elements.menuModal.classList.remove('visible'); renderCrestArchive(); elements.crestsModal.classList.add('visible'); });
+  elements.showStats.addEventListener('click', () => { elements.menuModal.classList.remove('visible'); renderStats(); elements.statsModal.classList.add('visible'); });
+  elements.levelButton.addEventListener('click', () => { if (state.progression.pendingLevels) maybeShowLevelUp(); else { renderStats(); elements.statsModal.classList.add('visible'); } });
+  elements.closeBeeProfile.addEventListener('click', () => elements.beeProfile.classList.add('hidden'));
+  document.querySelectorAll('.raid-action').forEach(button => button.addEventListener('click', () => {
+    const outcome = Core.resolveRaid(state, button.dataset.raid);
+    if (outcome.ok === false) return showToast(outcome.reason);
+    elements.raidModal.classList.remove('visible');
+    paused = false; elements.pauseButton.textContent = 'Ⅱ';
+    handleEvent(outcome); render(true); saveGame(); maybeShowLevelUp();
+  }));
+  elements.continueSealDiscovery.addEventListener('click', () => {
+    elements.sealDiscoveryModal.classList.remove('visible');
+    if (pendingYearEnd) { pendingYearEnd = false; showYearModal(); }
+    else { paused = false; elements.pauseButton.textContent = 'Ⅱ'; maybeShowLevelUp(); }
+  });
   elements.rerollUpgrades.addEventListener('click', () => {
     const result = Core.rerollUpgrades(state);
     if (!result.ok) return showToast(result.reason);

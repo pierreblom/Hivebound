@@ -35,6 +35,14 @@ test('a garden and refinery form a working economy', () => {
   assert.ok(state.resources.nectar < beforeNectar + 10);
 });
 
+test('stored nectar is divided evenly across every garden', () => {
+  const state = Core.createInitialState(42);
+  state.resources.nectar = 100;
+  assert.equal(Core.nectarPerGarden(state), 100);
+  assert.equal(Core.buildCell(state, '1,0', 'garden').ok, true);
+  assert.equal(Core.nectarPerGarden(state), 50);
+});
+
 test('honey cannot exceed vault capacity', () => {
   const state = Core.createInitialState(42);
   state.resources.nectar = 10000;
@@ -68,6 +76,8 @@ test('market sales honor permanent trader crests', () => {
 test('expedition returns resources and can lose a worker', () => {
   const state = Core.createInitialState(42);
   state.workers = 6;
+  state.progression.level = 7;
+  state.progression.discoveredLocations.push('highland');
   const started = Core.startExpedition(state, 'highland');
   assert.equal(started.ok, true);
   const beforeWax = state.resources.wax;
@@ -105,7 +115,46 @@ test('seasons materially change nectar production', () => {
   state.yearTime = Core.YEAR_LENGTH * .8;
   const frost = Core.productionRates(state).nectar;
   assert.equal(Core.currentSeason(state).id, 'frost');
-  assert.ok(bloom > frost * 2);
+  assert.ok(bloom > 0);
+  assert.equal(frost, 0);
+});
+
+test('all hive work and forage progress stop during Long Frost', () => {
+  const state = Core.createInitialState(42);
+  state.workers = 6;
+  assert.equal(Core.startExpedition(state, 'clover', 1).ok, true);
+  state.yearTime = Core.YEAR_LENGTH * .76;
+  const before = {
+    nectar: state.resources.nectar,
+    honey: state.resources.honey,
+    wax: state.resources.wax,
+    brood: state.cells['-1,1'].brood.progress,
+    expedition: state.expedition.elapsed
+  };
+  Core.step(state, 1, () => .5);
+  assert.equal(state.resources.nectar, before.nectar);
+  assert.equal(state.resources.honey, before.honey);
+  assert.equal(state.resources.wax, before.wax);
+  assert.equal(state.cells['-1,1'].brood.progress, before.brood);
+  assert.equal(state.expedition.elapsed, before.expedition);
+
+  const resting = Core.createInitialState(43);
+  resting.yearTime = Core.YEAR_LENGTH * .76;
+  assert.equal(Core.startExpedition(resting, 'clover', 1).ok, false);
+});
+
+test('wasps attack once in every year, including year one', () => {
+  const state = Core.createInitialState(42);
+  state.yearTime = Core.YEAR_LENGTH * .62 - .1;
+  const firstEvents = Core.step(state, .2, () => .5);
+  assert.equal(firstEvents.filter(event => event.type === 'raidStart').length, 1);
+  assert.equal(state.flags.raidResolved, true);
+  assert.ok(state.raid);
+  const outcome = Core.resolveRaid(state, 'focus');
+  assert.equal(outcome.type, 'raid');
+  assert.ok(Core.raidStrength(state) > 0);
+  const laterEvents = Core.step(state, 1, () => .5);
+  assert.equal(laterEvents.filter(event => event.type === 'raid').length, 0);
 });
 
 test('emergency climate actions spend crowns and alter conditions', () => {
@@ -161,7 +210,7 @@ test('version one saves migrate with brood lifecycle data', () => {
   delete old.cells['1,0'].brood;
   old.broodProgress = .5;
   const migrated = Core.normalizeState(old);
-  assert.equal(migrated.version, 3);
+  assert.equal(migrated.version, 4);
   assert.equal(migrated.cells['1,0'].brood.stage, 'larva');
 });
 
@@ -176,4 +225,58 @@ test('standing market orders keep the configured honey reserve', () => {
   assert.ok(events.some(event => event.type === 'autoSale'));
   assert.equal(Math.floor(state.resources.honey), 10);
   assert.ok(state.resources.coins > 90);
+});
+
+test('experience levels offer permanent two-choice rewards', () => {
+  const state = Core.createInitialState(42);
+  assert.equal(Core.gainExperience(state, 65), 1);
+  assert.equal(state.progression.level, 2);
+  assert.equal(state.progression.pendingLevels, 1);
+  const choices = Core.levelUpgradeChoices(state);
+  assert.equal(choices.length, 2);
+  const result = Core.chooseLevelUpgrade(state, choices[0].id);
+  assert.equal(result.ok, true);
+  assert.equal(state.progression.pendingLevels, 0);
+  assert.ok(state.progression.upgrades.includes(choices[0].id));
+});
+
+test('individual hive cells can be upgraded to multiply their output', () => {
+  const state = Core.createInitialState(42);
+  state.resources.coins = 500;
+  const before = Core.productionRates(state).processing;
+  assert.equal(Core.upgradeCell(state, '0,-1').ok, true);
+  assert.equal(state.cells['0,-1'].level, 2);
+  assert.ok(Core.productionRates(state).processing > before * 1.35);
+});
+
+test('new forage locations require levels and scouting', () => {
+  const state = Core.createInitialState(42);
+  state.resources.coins = 500;
+  assert.equal(Core.startExpedition(state, 'orchard', 1).ok, false);
+  assert.equal(Core.startScouting(state, 'orchard').ok, false);
+  state.progression.level = 2;
+  assert.equal(Core.startScouting(state, 'orchard').ok, true);
+  for (let index = 0; index < 40; index += 1) Core.step(state, .5, () => .5);
+  assert.ok(state.progression.discoveredLocations.includes('orchard'));
+  assert.equal(Core.startExpedition(state, 'orchard', 1).ok, true);
+});
+
+test('queen pheromone rewards expand range and production power', () => {
+  const state = Core.createInitialState(42);
+  const before = Core.productionRates(state).processing;
+  state.progression.upgrades.push('pheromonePower', 'pheromoneArea');
+  assert.equal(Core.pheromoneRadius(state), 2);
+  assert.ok(Core.pheromonePower(state) > .2);
+  assert.ok(Core.productionRates(state).processing > before);
+});
+
+test('field improvements cost crowns and modify expeditions', () => {
+  const state = Core.createInitialState(42);
+  state.resources.coins = 500;
+  const before = state.resources.coins;
+  const result = Core.upgradeForageLocation(state, 'clover', 'flightpath');
+  assert.equal(result.ok, true);
+  assert.equal(state.resources.coins, before - Core.FIELD_UPGRADES.flightpath.cost);
+  Core.startExpedition(state, 'clover', 1);
+  assert.ok(state.expedition.duration < Core.FORAGE_LOCATIONS[0].duration);
 });

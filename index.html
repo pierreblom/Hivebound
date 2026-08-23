@@ -55,6 +55,7 @@
         </button>
 
         <div class="year-block">
+          <button id="levelButton" class="level-pill" aria-label="Colony level and experience"><span>Level <b id="levelValue">1</b></span><i><em id="levelProgress"></em></i></button>
           <div class="year-heading"><span id="yearLabel">Year 1</span><span id="daysLabel">180 days</span></div>
           <div class="year-track"><i id="yearProgress"></i></div>
           <div class="time-controls" aria-label="Game speed">
@@ -124,7 +125,7 @@
             </defs>
             <g id="gridLayer"></g>
             <g id="bonusLayer" pointer-events="none"></g>
-            <g id="beeLayer" pointer-events="none"></g>
+            <g id="beeLayer"></g>
           </svg>
 
           <div class="zoom-controls">
@@ -138,7 +139,15 @@
             <div><p class="eyebrow" id="selectionType">Cell</p><h3 id="selectionName">Honey vault</h3><p id="selectionDescription"></p></div>
             <div class="selection-stats" id="selectionStats"></div>
             <button id="tendBroodButton" class="secondary-button full hidden">Tend the brood</button>
+            <button id="upgradeCellButton" class="secondary-button full hidden">Upgrade cell</button>
             <button id="demolishButton" class="text-button danger">Recycle cell</button>
+          </div>
+
+          <div id="beeProfile" class="bee-profile hidden">
+            <button id="closeBeeProfile" class="close-button" aria-label="Close bee profile">×</button>
+            <img src="assets/hive/worker-bee.svg" alt="" />
+            <p class="eyebrow">Worker profile</p><h3 id="beeProfileName">Mallow Wingstead</h3><strong id="beeProfileStatus">Working</strong>
+            <dl><div><dt>Likes</dt><dd id="beeProfileLikes">warm comb</dd></div><div><dt>Dislikes</dt><dd id="beeProfileDislikes">sudden rain</dd></div></dl>
           </div>
 
           <div id="toast" class="toast" role="status"></div>
@@ -206,6 +215,7 @@
         <button class="close-button modal-close" data-close="forageModal">×</button>
         <p class="eyebrow">Choose your risk</p><h2>Send a swarm beyond the hedge</h2>
         <p class="modal-lede">Bees in the meadow stop working in the hive. Richer fields take longer and carry more danger.</p>
+        <div id="forageStatus" class="forage-status"></div>
         <div id="forageChoices" class="choice-grid"></div>
       </section>
     </div>
@@ -261,7 +271,7 @@
     <div id="menuModal" class="modal-backdrop">
       <section class="modal menu-modal">
         <button class="close-button modal-close" data-close="menuModal">×</button>
-        <div class="menu-sidebar"><p class="eyebrow">Hivebound</p><h2>Colony menu</h2><button id="resumeGame" class="menu-nav active">Resume game</button><button id="saveGameButton" class="menu-nav">Save colony</button><button id="newColonyMenu" class="menu-nav">New colony</button><button id="showCrests" class="menu-nav">Crest archive</button></div>
+        <div class="menu-sidebar"><p class="eyebrow">Hivebound</p><h2>Colony menu</h2><button id="resumeGame" class="menu-nav active">Resume game</button><button id="saveGameButton" class="menu-nav">Save colony</button><button id="showStats" class="menu-nav">Colony stats</button><button id="newColonyMenu" class="menu-nav">New colony</button><button id="showCrests" class="menu-nav">Crest archive</button></div>
         <div class="settings-pane"><p class="eyebrow">Settings</p><h3>How the hive feels</h3><label class="setting-row"><span><b>Sound effects</b><small>Build, market, and alert tones</small></span><input id="soundToggle" type="checkbox" checked/></label><label class="setting-row"><span><b>Reduced motion</b><small>Calmer workers and transitions</small></span><input id="motionToggle" type="checkbox"/></label><label class="setting-row"><span><b>Field hints</b><small>Show contextual guidance</small></span><input id="hintsToggle" type="checkbox" checked/></label><div class="run-identity"><span id="menuBiomeIcon">✿</span><div><small>Current run</small><b id="menuRunIdentity">Sunmeadow Vale • Worker’s Oath</b></div></div></div>
       </section>
     </div>
@@ -270,6 +280,29 @@
       <section class="modal archive-modal">
         <button class="close-button modal-close" data-close="crestsModal">×</button><div class="archive-heading"><div><p class="eyebrow">Run discoveries</p><h2>Royal Crest Archive</h2></div><span id="archiveProgress">0 / 8 discovered</span></div><div id="crestArchive" class="crest-archive"></div>
       </section>
+    </div>
+
+    <div id="levelUpModal" class="modal-backdrop priority-modal">
+      <section class="modal levelup-modal">
+        <p class="eyebrow">Colony experience</p><h2>Level up!</h2><span id="levelUpNumber" class="level-medal">2</span><p>Choose one permanent colony upgrade.</p>
+        <div id="levelUpgradeChoices" class="choice-grid level-choice-grid"></div>
+      </section>
+    </div>
+
+    <div id="raidModal" class="modal-backdrop priority-modal">
+      <section class="modal raid-modal">
+        <span class="raid-mark">!</span><p class="eyebrow">Annual wasp attack</p><h2>Defend the Queen</h2><p>The workers fight automatically. Choose how the colony answers this strike.</p>
+        <div class="raid-strength"><span><small>Wasp strength</small><b id="raidAttack">0</b></span><span><small>Hive defence</small><b id="raidDefense">0</b></span></div>
+        <div class="raid-actions"><button class="choice-card raid-action" data-raid="focus"><span>◎</span><b>Focus target</b><small>25% stronger defence</small></button><button class="choice-card raid-action" data-raid="dodge"><span>↯</span><b>Dodge strike</b><small>Timing bonus</small></button><button class="choice-card raid-action" data-raid="recall"><span>↩</span><b>Recall foragers</b><small>Bring field bees home</small></button><button class="choice-card raid-action" data-raid="hire"><span>♜</span><b>Hire guards</b><small>75 crowns</small></button></div>
+      </section>
+    </div>
+
+    <div id="sealDiscoveryModal" class="modal-backdrop priority-modal">
+      <section class="modal discovery-modal"><span class="discovery-medal">♛</span><p class="eyebrow">New Royal Crest discovered</p><h2 id="sealDiscoveryName">Small Batch</h2><p id="sealDiscoveryText"></p><button id="continueSealDiscovery" class="primary-button">Continue <span>→</span></button></section>
+    </div>
+
+    <div id="statsModal" class="modal-backdrop">
+      <section class="modal stats-modal"><button class="close-button modal-close" data-close="statsModal">×</button><p class="eyebrow">Colony ledger</p><h2>Hive statistics</h2><div id="statsContent" class="stats-content"></div></section>
     </div>
 
     <div id="gameOverModal" class="modal-backdrop">
