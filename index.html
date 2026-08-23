@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5b72e" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Hivebound" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>Hivebound — Build a living colony</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/hivebound-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="192x192" href="icons/hivebound-icon-192.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main id="game" class="game-shell" aria-live="polite">
+      <header class="topbar">
+        <div class="brand-block">
+          <div class="brand-mark" aria-hidden="true"><span>⬡</span><b>HB</b></div>
+          <div>
+            <p class="eyebrow">Crown apiary no. 07</p>
+            <h1>Hivebound</h1>
+          </div>
+        </div>
+
+        <div class="resource-ribbon" aria-label="Colony resources">
+          <button class="resource-chip" data-focus="wax" title="Wax is used to build cells">
+            <span class="resource-icon wax-icon">⬡</span>
+            <span><small>Wax</small><strong id="waxValue">140</strong></span>
+          </button>
+          <button class="resource-chip" data-focus="nectar" title="Nectar is processed into honey">
+            <span class="resource-icon nectar-icon">●</span>
+            <span><small>Nectar</small><strong id="nectarValue">35</strong></span>
+          </button>
+          <button class="resource-chip" data-focus="honey" title="Honey can be sold or delivered to the Crown">
+            <span class="resource-icon honey-icon">◆</span>
+            <span><small>Honey</small><strong id="honeyValue">0</strong></span>
+          </button>
+          <button class="resource-chip" data-focus="coins" title="Crowns buy expeditions and emergency supplies">
+            <span class="resource-icon coin-icon">●</span>
+            <span><small>Crowns</small><strong id="coinValue">90</strong></span>
+          </button>
+        </div>
+
+        <div class="year-block">
+          <div class="year-heading"><span id="yearLabel">Year 1</span><span id="daysLabel">90 days</span></div>
+          <div class="year-track"><i id="yearProgress"></i></div>
+          <div class="time-controls" aria-label="Game speed">
+            <button id="pauseButton" class="icon-button active" aria-label="Pause or play">▶</button>
+            <button class="speed-button active" data-speed="1">1×</button>
+            <button class="speed-button" data-speed="2">2×</button>
+            <button class="speed-button" data-speed="3">3×</button>
+            <button id="menuButton" class="icon-button menu-button" aria-label="Open colony menu">☰</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="play-area">
+        <aside class="left-rail">
+          <section class="panel colony-card">
+            <div class="panel-heading">
+              <div><p class="eyebrow">Colony pulse</p><h2>Hive climate</h2></div>
+              <span id="climateStatus" class="status-pill good">Optimal</span>
+            </div>
+            <div class="climate-list">
+              <div class="climate-row">
+                <span class="climate-symbol temperature">↟</span>
+                <div><span><b>Temperature</b><em id="temperatureValue">34.0°C</em></span><div class="meter"><i id="temperatureBar"></i><mark style="left:45%"></mark></div></div>
+              </div>
+              <div class="climate-row">
+                <span class="climate-symbol humidity">◒</span>
+                <div><span><b>Humidity</b><em id="humidityValue">58%</em></span><div class="meter"><i id="humidityBar"></i><mark style="left:55%"></mark></div></div>
+              </div>
+              <div class="climate-row">
+                <span class="climate-symbol air">≈</span>
+                <div><span><b>Air quality</b><em id="airValue">93%</em></span><div class="meter"><i id="airBar"></i><mark style="left:72%"></mark></div></div>
+              </div>
+            </div>
+            <div class="efficiency-line"><span>Colony efficiency</span><strong id="efficiencyValue">100%</strong></div>
+          </section>
+
+          <section class="panel quota-card">
+            <div class="quota-crown">♛</div>
+            <div class="quota-copy"><p class="eyebrow">The Crown's due</p><h2 id="quotaTitle">Deliver 50 honey</h2></div>
+            <div class="quota-numbers"><strong id="quotaCurrent">0</strong><span>/</span><b id="quotaTarget">50</b></div>
+            <div class="quota-track"><i id="quotaProgress"></i></div>
+            <button id="deliverButton" class="primary-button full">Deliver honey <span>→</span></button>
+          </section>
+
+          <section class="panel event-card" id="eventCard">
+            <div class="event-art" id="eventIcon">☀</div>
+            <div><p class="eyebrow">Field report</p><h3 id="eventTitle">A gentle beginning</h3><p id="eventText">The meadows are calm. Build a garden to bring nectar home.</p></div>
+          </section>
+        </aside>
+
+        <section class="hive-stage" id="hiveStage">
+          <div class="ambient orb-one"></div><div class="ambient orb-two"></div>
+          <div class="stage-heading">
+            <div><p class="eyebrow">Royal nursery grounds</p><h2 id="stageTitle">Make the hive hum</h2></div>
+            <button id="seasonButton" class="season-badge"><span id="seasonIcon">◒</span><b id="seasonName">First Thaw</b><small id="seasonEffect">Cool awakening</small></button>
+            <div class="worker-badge"><span class="mini-bee">●</span><strong id="workerValue">4</strong><small>workers</small></div>
+          </div>
+
+          <svg id="hiveSvg" class="hive-svg" viewBox="0 0 860 650" role="img" aria-label="Interactive hexagonal hive board">
+            <defs>
+              <filter id="cellShadow" x="-30%" y="-30%" width="160%" height="180%">
+                <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#704418" flood-opacity=".2" />
+              </filter>
+              <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="7" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <g id="gridLayer"></g>
+            <g id="bonusLayer" pointer-events="none"></g>
+            <g id="beeLayer" pointer-events="none"></g>
+          </svg>
+
+          <div class="zoom-controls">
+            <button id="zoomOut" aria-label="Zoom out">−</button><button id="zoomReset" aria-label="Reset zoom">⌂</button><button id="zoomIn" aria-label="Zoom in">+</button>
+          </div>
+          <button id="climateToolsButton" class="climate-tools-button"><span>⚡</span><b>Emergency response</b><small id="emergencyStatus">Warm • Mist • Rally</small></button>
+
+          <div id="selectionCard" class="selection-card hidden">
+            <button id="closeSelection" class="close-button" aria-label="Close">×</button>
+            <span id="selectionIcon" class="selection-icon">🍯</span>
+            <div><p class="eyebrow" id="selectionType">Cell</p><h3 id="selectionName">Honey vault</h3><p id="selectionDescription"></p></div>
+            <div class="selection-stats" id="selectionStats"></div>
+            <button id="tendBroodButton" class="secondary-button full hidden">Tend the brood</button>
+            <button id="demolishButton" class="text-button danger">Recycle cell</button>
+          </div>
+
+          <div id="toast" class="toast" role="status"></div>
+        </section>
+
+        <aside class="right-rail">
+          <section class="panel market-card">
+            <div class="panel-heading">
+              <div><p class="eyebrow">Amber exchange</p><h2>Honey market</h2></div>
+              <span id="marketTrend" class="trend up">↗ 8%</span>
+            </div>
+            <div class="market-price"><strong id="marketPrice">12.4</strong><span>crowns<br/>per jar</span></div>
+            <button id="openMarketButton" class="mobile-market-button">Open market desk <span>→</span></button>
+            <svg id="marketChart" class="market-chart" viewBox="0 0 280 80" preserveAspectRatio="none" aria-label="Honey price history"><path id="marketArea"></path><polyline id="marketLine"></polyline></svg>
+            <div class="market-actions">
+              <button class="sell-button" data-sell="1">Sell 1</button>
+              <button class="sell-button" data-sell="10">Sell 10</button>
+              <button class="sell-button" data-sell="all">Sell all</button>
+            </div>
+            <div class="market-rules"><label><input id="autoSellToggle" type="checkbox"/> Auto-sell above 16</label><label>Keep <input id="reserveInput" type="number" min="0" max="99" value="10"/> honey</label></div>
+          </section>
+
+          <section class="panel expedition-card">
+            <div class="panel-heading"><div><p class="eyebrow">Beyond the hedge</p><h2>Foraging</h2></div><button id="openForage" class="round-button">↗</button></div>
+            <div id="activeExpedition" class="expedition-empty">
+              <span>✿</span><div><b>No swarm afield</b><small>Send bees to gather nectar and wax.</small></div>
+            </div>
+            <button id="forageButton" class="secondary-button full">Choose a meadow</button>
+          </section>
+
+          <section class="panel seals-card">
+            <div class="panel-heading"><div><p class="eyebrow">Run modifiers</p><h2>Royal crests</h2></div><span id="sealCount">0 / 6</span></div>
+            <div id="sealList" class="seal-list"><p class="empty-copy">Complete a year to earn your first permanent crest.</p></div>
+          </section>
+        </aside>
+      </section>
+
+      <nav class="build-dock" aria-label="Build cells">
+        <div class="dock-label"><span>Build</span><small>Select a cell, then choose an empty hex</small></div>
+        <div id="buildOptions" class="build-options"></div>
+        <button id="cancelBuild" class="cancel-build hidden">Cancel</button>
+      </nav>
+    </main>
+
+    <div id="welcomeModal" class="modal-backdrop visible">
+      <section class="modal welcome-modal">
+        <div class="welcome-visual" aria-hidden="true">
+          <div class="sun-ring"></div>
+          <div class="hero-comb"><i></i><i></i><i></i><i></i><i></i><i></i><i class="queen-hero">♛</i></div>
+          <span class="hero-bee bee-a">●</span><span class="hero-bee bee-b">●</span><span class="hero-bee bee-c">●</span>
+        </div>
+        <div class="welcome-copy">
+          <p class="eyebrow">An original colony strategy game</p>
+          <h2>Small wings.<br/><em>Big decisions.</em></h2>
+          <p>Shape a living hive, build clever production chains, ride the honey market, and meet the Crown's rising demand.</p>
+          <div class="welcome-features"><span><b>⬡</b> Build the engine</span><span><b>✿</b> Risk the meadow</span><span><b>♜</b> Guard the Queen</span></div>
+          <button id="newGameButton" class="primary-button">Begin a new colony <span>→</span></button>
+          <button id="continueButton" class="text-button hidden">Continue saved colony</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="forageModal" class="modal-backdrop">
+      <section class="modal choice-modal">
+        <button class="close-button modal-close" data-close="forageModal">×</button>
+        <p class="eyebrow">Choose your risk</p><h2>Send a swarm beyond the hedge</h2>
+        <p class="modal-lede">Bees in the meadow stop working in the hive. Richer fields take longer and carry more danger.</p>
+        <div id="forageChoices" class="choice-grid"></div>
+      </section>
+    </div>
+
+    <div id="marketModal" class="modal-backdrop">
+      <section class="modal mobile-market-modal">
+        <button class="close-button modal-close" data-close="marketModal">×</button>
+        <p class="eyebrow">Amber exchange</p><h2>Honey market desk</h2>
+        <div class="mobile-market-quote"><strong id="mobileMarketPrice">12.4</strong><span>crowns per jar</span><em id="mobileMarketTrend">↗ 6%</em></div>
+        <svg class="market-chart mobile-market-chart" viewBox="0 0 280 80" preserveAspectRatio="none" aria-label="Honey price history"><path id="mobileMarketArea"></path><polyline id="mobileMarketLine"></polyline></svg>
+        <div class="mobile-sell-actions"><button class="sell-button" data-sell="1">Sell 1</button><button class="sell-button" data-sell="10">Sell 10</button><button class="sell-button" data-sell="all">Sell all</button></div>
+        <div class="mobile-market-rules"><label><span><b>Standing order</b><small>Sell automatically above 16 crowns</small></span><input id="mobileAutoSellToggle" type="checkbox"/></label><label><span><b>Protected reserve</b><small>Honey the exchange may never sell</small></span><input id="mobileReserveInput" type="number" min="0" max="99" value="10"/></label></div>
+      </section>
+    </div>
+
+    <div id="yearModal" class="modal-backdrop">
+      <section class="modal choice-modal year-modal">
+        <div class="year-summary"><p class="eyebrow">The bells ring at midsummer</p><h2 id="yearModalTitle">Year complete</h2><p id="yearModalText"></p></div>
+        <div class="worker-of-year"><span class="worker-portrait">●</span><div><small>Exemplary worker</small><strong id="workerOfYear">Mallow Wingstead</strong><em id="workerCitation">Most journeys completed</em></div></div>
+        <div id="yearStats" class="year-stats"></div>
+        <p class="choice-label">Choose one crest. Its power lasts for this entire colony.</p>
+        <div id="upgradeChoices" class="choice-grid upgrade-grid"></div>
+        <button id="rerollUpgrades" class="secondary-button reroll-button">Redraw crests <span id="rerollCost">35 crowns</span></button>
+      </section>
+    </div>
+
+    <div id="broodModal" class="modal-backdrop">
+      <section class="modal brood-modal">
+        <button class="close-button modal-close" data-close="broodModal">×</button>
+        <p class="eyebrow">Brood Nursery</p><div id="broodStageIcon" class="brood-stage-icon">◌</div><h2 id="broodStageName">New egg</h2>
+        <p id="broodStageText">The first quiet stage of a new worker.</p><div class="brood-progress"><i id="broodProgressBar"></i></div><strong id="broodTime">About 60 days until hatching</strong>
+        <div class="brood-actions"><button class="secondary-button feed-brood" data-feed="1">Feed 1 honey</button><button class="primary-button feed-brood" data-feed="3">Feed 3 honey <span>↗</span></button></div>
+      </section>
+    </div>
+
+    <div id="climateModal" class="modal-backdrop">
+      <section class="modal choice-modal climate-modal">
+        <button class="close-button modal-close" data-close="climateModal">×</button>
+        <p class="eyebrow">Emergency response</p><h2>Steady the living hive</h2><p class="modal-lede">Spend crowns for a short intervention. Only one response can be active at a time.</p>
+        <div class="choice-grid emergency-grid"><button class="choice-card emergency-action" data-emergency="warm"><span class="choice-art">☀</span><h3>Warm the comb</h3><p>Raise temperature by 7°C for 15 days.</p><small class="choice-cost">28 crowns</small></button><button class="choice-card emergency-action" data-emergency="mist"><span class="choice-art">◒</span><h3>Mist the hive</h3><p>Raise humidity by 16% for 15 days.</p><small class="choice-cost">28 crowns</small></button><button class="choice-card emergency-action" data-emergency="rally"><span class="choice-art">⚡</span><h3>Rally the workers</h3><p>Boost production by 45% for 12 days.</p><small class="choice-cost">52 crowns</small></button></div>
+      </section>
+    </div>
+
+    <div id="setupModal" class="modal-backdrop">
+      <section class="modal setup-modal">
+        <button class="close-button modal-close" data-close="setupModal">×</button>
+        <p class="eyebrow">Found a new colony</p><h2>Choose where your story begins</h2><p class="modal-lede">Each biome changes climate and resource flow. Difficulty changes quotas, raids, and run length.</p>
+        <h3 class="setup-label">Biome</h3><div id="biomeChoices" class="biome-choices"></div><h3 class="setup-label">Difficulty</h3><div id="difficultyChoices" class="difficulty-choices"></div>
+        <button id="startConfiguredGame" class="primary-button setup-start">Found this colony <span>→</span></button>
+      </section>
+    </div>
+
+    <div id="menuModal" class="modal-backdrop">
+      <section class="modal menu-modal">
+        <button class="close-button modal-close" data-close="menuModal">×</button>
+        <div class="menu-sidebar"><p class="eyebrow">Hivebound</p><h2>Colony menu</h2><button id="resumeGame" class="menu-nav active">Resume game</button><button id="saveGameButton" class="menu-nav">Save colony</button><button id="newColonyMenu" class="menu-nav">New colony</button><button id="showCrests" class="menu-nav">Crest archive</button></div>
+        <div class="settings-pane"><p class="eyebrow">Settings</p><h3>How the hive feels</h3><label class="setting-row"><span><b>Sound effects</b><small>Build, market, and alert tones</small></span><input id="soundToggle" type="checkbox" checked/></label><label class="setting-row"><span><b>Reduced motion</b><small>Calmer workers and transitions</small></span><input id="motionToggle" type="checkbox"/></label><label class="setting-row"><span><b>Field hints</b><small>Show contextual guidance</small></span><input id="hintsToggle" type="checkbox" checked/></label><div class="run-identity"><span id="menuBiomeIcon">✿</span><div><small>Current run</small><b id="menuRunIdentity">Sunmeadow Vale • Worker’s Oath</b></div></div></div>
+      </section>
+    </div>
+
+    <div id="crestsModal" class="modal-backdrop">
+      <section class="modal archive-modal">
+        <button class="close-button modal-close" data-close="crestsModal">×</button><div class="archive-heading"><div><p class="eyebrow">Run discoveries</p><h2>Royal Crest Archive</h2></div><span id="archiveProgress">0 / 8 discovered</span></div><div id="crestArchive" class="crest-archive"></div>
+      </section>
+    </div>
+
+    <div id="gameOverModal" class="modal-backdrop">
+      <section class="modal gameover-modal">
+        <span class="gameover-mark">♛</span><p class="eyebrow">The colony fell silent</p><h2 id="gameOverTitle">The Crown's due was missed</h2><p id="gameOverText"></p>
+        <div id="finalStats" class="year-stats"></div>
+        <button id="restartButton" class="primary-button">Found a new colony <span>↻</span></button>
+      </section>
+    </div>
+
+    <script src="game-core.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

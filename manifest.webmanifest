@@ -1,0 +1,17 @@
+{
+  "name": "Hivebound — Build a Living Colony",
+  "short_name": "Hivebound",
+  "description": "A touch-first bee colony strategy and engine-building game.",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#f5edda",
+  "theme_color": "#f4ad22",
+  "categories": ["games", "strategy"],
+  "icons": [
+    { "src": "/icons/hivebound-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/hivebound-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/hivebound-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
