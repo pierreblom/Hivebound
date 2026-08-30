@@ -286,7 +286,7 @@
       if (cell) {
         const definition = Core.CELL_TYPES[cell.type];
         if (cell.type === 'queen') {
-          group.appendChild(svg('image', { class: 'cell-picture queen-picture', href: 'assets/hive/queen-bee.svg', x: center.x - 34, y: center.y - 42, width: 68, height: 68 }));
+          group.appendChild(svg('image', { class: 'cell-picture queen-picture pixel-sprite', href: 'assets/hive/queen-bee.png', x: center.x - 39, y: center.y - 48, width: 78, height: 78 }));
           const label = svg('text', { class: 'cell-label picture-label', x: center.x, y: center.y + 35 });
           label.textContent = 'QUEEN';
           group.appendChild(label);
@@ -825,7 +825,7 @@
   function makeBee(index) {
     const node = svg('g', { class: 'bee', role: 'button', tabindex: '0', 'aria-label': `View ${beeNames[index % beeNames.length]}` });
     node.appendChild(svg('circle', { class: 'bee-hit-target', cx: 0, cy: 0, r: 24 }));
-    node.appendChild(svg('image', { class: 'bee-picture', href: 'assets/hive/worker-bee.svg', x: -18, y: -14, width: 36, height: 28 }));
+    node.appendChild(svg('image', { class: 'bee-picture pixel-sprite', href: 'assets/hive/worker-bee.png', x: -28, y: -22, width: 56, height: 45 }));
     elements.beeLayer.appendChild(node);
     node.addEventListener('click', event => { event.stopPropagation(); showBeeProfile(index); });
     node.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showBeeProfile(index); });

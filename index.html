@@ -145,7 +145,7 @@
 
           <div id="beeProfile" class="bee-profile hidden">
             <button id="closeBeeProfile" class="close-button" aria-label="Close bee profile">×</button>
-            <img src="assets/hive/worker-bee.svg" alt="" />
+            <img src="assets/hive/worker-bee.png" alt="" />
             <p class="eyebrow">Worker profile</p><h3 id="beeProfileName">Mallow Wingstead</h3><strong id="beeProfileStatus">Working</strong>
             <dl><div><dt>Likes</dt><dd id="beeProfileLikes">warm comb</dd></div><div><dt>Dislikes</dt><dd id="beeProfileDislikes">sudden rain</dd></div></dl>
           </div>
@@ -196,8 +196,8 @@
       <section class="modal welcome-modal">
         <div class="welcome-visual" aria-hidden="true">
           <div class="sun-ring"></div>
-          <div class="hero-comb"><i></i><i></i><i></i><i></i><i></i><i></i><i class="queen-hero">♛</i></div>
-          <span class="hero-bee bee-a">●</span><span class="hero-bee bee-b">●</span><span class="hero-bee bee-c">●</span>
+          <div class="hero-comb"><i></i><i></i><i></i><i></i><i></i><i></i><img class="queen-hero" src="assets/hive/queen-bee.png" alt="" /></div>
+          <img class="hero-bee bee-a" src="assets/hive/worker-bee.png" alt="" /><img class="hero-bee bee-b" src="assets/hive/worker-bee.png" alt="" /><img class="hero-bee bee-c" src="assets/hive/worker-bee.png" alt="" />
         </div>
         <div class="welcome-copy">
           <p class="eyebrow">An original colony strategy game</p>
@@ -234,7 +234,7 @@
     <div id="yearModal" class="modal-backdrop">
       <section class="modal choice-modal year-modal">
         <div class="year-summary"><p class="eyebrow">The bells ring at midsummer</p><h2 id="yearModalTitle">Year complete</h2><p id="yearModalText"></p></div>
-        <div class="worker-of-year"><span class="worker-portrait">●</span><div><small>Exemplary worker</small><strong id="workerOfYear">Mallow Wingstead</strong><em id="workerCitation">Most journeys completed</em></div></div>
+        <div class="worker-of-year"><span class="worker-portrait"><img src="assets/hive/worker-bee.png" alt="" /></span><div><small>Exemplary worker</small><strong id="workerOfYear">Mallow Wingstead</strong><em id="workerCitation">Most journeys completed</em></div></div>
         <div id="yearStats" class="year-stats"></div>
         <p class="choice-label">Choose one crest. Its power lasts for this entire colony.</p>
         <div id="upgradeChoices" class="choice-grid upgrade-grid"></div>
@@ -291,7 +291,7 @@
 
     <div id="raidModal" class="modal-backdrop priority-modal">
       <section class="modal raid-modal">
-        <span class="raid-mark">!</span><p class="eyebrow">Annual wasp attack</p><h2>Defend the Queen</h2><p>The workers fight automatically. Choose how the colony answers this strike.</p>
+        <div class="raid-visual" aria-hidden="true"><img src="assets/hive/wasp.png" alt="" /><span class="raid-mark">!</span></div><p class="eyebrow">Annual wasp attack</p><h2>Defend the Queen</h2><p>The workers fight automatically. Choose how the colony answers this strike.</p>
         <div class="raid-strength"><span><small>Wasp strength</small><b id="raidAttack">0</b></span><span><small>Hive defence</small><b id="raidDefense">0</b></span></div>
         <div class="raid-actions"><button class="choice-card raid-action" data-raid="focus"><span>◎</span><b>Focus target</b><small>25% stronger defence</small></button><button class="choice-card raid-action" data-raid="dodge"><span>↯</span><b>Dodge strike</b><small>Timing bonus</small></button><button class="choice-card raid-action" data-raid="recall"><span>↩</span><b>Recall foragers</b><small>Bring field bees home</small></button><button class="choice-card raid-action" data-raid="hire"><span>♜</span><b>Hire guards</b><small>75 crowns</small></button></div>
       </section>

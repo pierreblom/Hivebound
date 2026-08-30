@@ -1,10 +1,11 @@
-const CACHE = 'hivebound-v0.6.2';
+const CACHE = 'hivebound-v0.6.3';
 const LOCAL_ASSETS = [
   '/', '/index.html', '/styles.css', '/game-core.js', '/app.js', '/manifest.webmanifest',
   '/icons/hivebound-icon.svg', '/icons/hivebound-icon-192.png', '/icons/hivebound-icon-512.png',
   '/assets/illustrations/season-cycle.png',
   '/assets/icons/wax-comb.svg', '/assets/icons/nectar-flower.svg', '/assets/icons/honey-jar.svg', '/assets/icons/crown-coins.svg',
-  '/assets/hive/queen-bee.svg', '/assets/hive/worker-bee.svg', '/assets/hive/egg.svg', '/assets/hive/larva.svg', '/assets/hive/pupa.svg'
+  '/assets/hive/queen-bee.png', '/assets/hive/worker-bee.png', '/assets/hive/wasp.png',
+  '/assets/hive/egg.svg', '/assets/hive/larva.svg', '/assets/hive/pupa.svg'
 ];
 
 self.addEventListener('install', event => {

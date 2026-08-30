@@ -353,6 +353,15 @@ button, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action
 .bee-profile dl div { padding-top: 8px; border-top: 1px solid var(--line); }
 .bee-profile dt { font-size: 8px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .bee-profile dd { margin: 2px 0 0; font-size: 11px; }
+.bee-profile > img, .worker-portrait img, .queen-hero, .hero-bee, .raid-visual img { image-rendering: pixelated; }
+.bee-profile > img { height: 64px; object-fit: contain; }
+.worker-portrait { overflow: hidden; }
+.worker-portrait img { width: 54px; height: 44px; object-fit: contain; }
+.queen-hero { position: absolute; z-index: 4; left: 76px; top: 69px; width: 130px; height: 145px; object-fit: contain; filter: drop-shadow(0 10px 8px rgba(55,28,10,.34)); }
+.hero-bee { width: 58px; height: 47px; object-fit: contain; }
+.bee-a { left: 13%; top: 19%; }
+.bee-b { right: 10%; top: 61%; }
+.bee-c { left: 17%; bottom: 10%; }
 .forage-status { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
 .forage-status span { padding: 7px 10px; border-radius: 999px; background: #f1e5c9; font-size: 9px; text-transform: uppercase; letter-spacing: .07em; }
 .forage-status b { margin-right: 3px; font-size: 12px; }
@@ -371,7 +380,10 @@ button, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action
 .level-medal { display: inline-grid; place-items: center; width: 56px; height: 62px; margin: 4px auto 8px; clip-path: polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%); background: var(--gold); color: #54330e; font: 800 21px var(--sans); }
 .level-choice-grid { grid-template-columns: repeat(2, 1fr); max-width: 520px; margin-inline: auto; }
 .level-choice { min-height: 220px; }
-.raid-mark { display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: #e66e4a; color: #fff; font: 800 34px var(--serif); }
+.raid-visual { position: relative; width: 132px; height: 112px; margin: -18px auto 0; }
+.raid-visual img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 10px 8px rgba(91,38,12,.28)); animation: waspThreat .62s ease-in-out infinite alternate; }
+.raid-mark { position: absolute; right: 2px; top: 3px; display: inline-grid; place-items: center; width: 42px; height: 42px; border: 4px solid #fff5da; border-radius: 50%; background: #e66e4a; color: #fff; font: 800 25px var(--serif); box-shadow: 0 4px 10px rgba(94,38,14,.22); }
+@keyframes waspThreat { from { transform: translate(-4px, 2px) rotate(-2deg); } to { transform: translate(5px, -3px) rotate(2deg); } }
 .raid-strength { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 420px; margin: 18px auto; }
 .raid-strength span { padding: 13px; border-radius: 12px; background: #f0e4c9; }
 .raid-strength small, .raid-strength b { display: block; }
@@ -439,6 +451,7 @@ button, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action
 .cell-queen .hex-shape { fill: #918c78; stroke: #686351; }
 .cell-brood .hex-shape { fill: #a7a18d; stroke: #77715e; }
 .cell-picture, .bee-picture { pointer-events: none; }
+.pixel-sprite { image-rendering: pixelated; }
 .cell-resource-count { font: 600 21px var(--serif); text-anchor: middle; dominant-baseline: central; fill: #5c4a28; pointer-events: none; }
 .picture-label { font-size: 7px; fill: rgba(255,255,255,.82) !important; }
 .queen-picture { filter: drop-shadow(0 4px 3px rgba(37,28,16,.26)); }
