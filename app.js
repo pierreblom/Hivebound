@@ -911,12 +911,20 @@
     elements.pauseButton.textContent = paused ? '▶' : 'Ⅱ';
     elements.pauseButton.classList.toggle('active', !paused);
   });
-  document.querySelectorAll('.speed-button').forEach(button => button.addEventListener('click', () => {
-    speed = Number(button.dataset.speed);
+  const speedButtons = [...document.querySelectorAll('.speed-button')];
+  const describeSpeedButtons = () => speedButtons.forEach(button => {
+    const active = Number(button.dataset.speed) === speed;
+    button.setAttribute('aria-label', active && MOBILE_LAYOUT ? `Game speed ${speed}×. Tap to change speed.` : `Set game speed to ${button.dataset.speed}×`);
+  });
+  describeSpeedButtons();
+  speedButtons.forEach(button => button.addEventListener('click', () => {
+    speed = MOBILE_LAYOUT && button.classList.contains('active') ? speed % 3 + 1 : Number(button.dataset.speed);
     paused = false;
     elements.pauseButton.textContent = 'Ⅱ';
     elements.pauseButton.classList.add('active');
-    document.querySelectorAll('.speed-button').forEach(item => item.classList.toggle('active', item === button));
+    speedButtons.forEach(item => item.classList.toggle('active', Number(item.dataset.speed) === speed));
+    describeSpeedButtons();
+    if (MOBILE_LAYOUT) showToast(`Game speed: ${speed}×`);
   }));
   elements.cancelBuild.addEventListener('click', () => { selectedBuild = null; elements.cancelBuild.classList.add('hidden'); renderBuildOptions(); renderBoard(); });
   elements.closeSelection.addEventListener('click', () => { selectedCell = null; elements.selectionCard.classList.add('hidden'); renderBoard(); });
@@ -1029,6 +1037,7 @@
   if (saved) elements.continueButton.classList.remove('hidden');
   renderBoard();
   render(true);
+  if (MOBILE_LAYOUT) requestAnimationFrame(() => { document.querySelector('.build-dock').scrollLeft = 0; });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   requestAnimationFrame(frame);
 })();

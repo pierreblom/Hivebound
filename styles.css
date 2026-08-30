@@ -479,6 +479,87 @@ button, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action
   .season-timeline-button > b { display: none; }
 }
 
+/* Phone portrait: keep the board compact and make every system reachable. */
+@media (max-width: 560px) and (orientation: portrait) {
+  html, body {
+    height: auto; min-height: 100%; overflow-x: hidden; overflow-y: auto;
+    overscroll-behavior-x: none; overscroll-behavior-y: auto;
+  }
+  body { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .game-shell {
+    height: auto; min-height: 100svh; overflow: visible;
+    display: flex; flex-direction: column;
+  }
+  .topbar { position: sticky; top: 0; flex: none; }
+  .year-block { display: flex; align-items: center; gap: 3px; }
+  .level-pill {
+    position: static; min-width: 70px; grid-template-columns: auto;
+    margin: 0 1px 0 0; padding: 4px 7px;
+  }
+  .level-pill span { white-space: nowrap; }
+  .time-controls { grid-column: auto; grid-row: auto; }
+  .play-area {
+    height: auto; min-height: 0; overflow: visible;
+    display: flex; flex-direction: column;
+  }
+  .hive-stage {
+    order: 1; flex: none; width: 100%;
+    height: clamp(430px, 58svh, 520px); min-height: clamp(430px, 58svh, 520px);
+  }
+  .hive-svg { min-height: 0; transform: scale(.98); transform-origin: 50% 50%; }
+  .left-rail, .right-rail {
+    position: static; inset: auto; width: 100%; max-height: none;
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px;
+    padding: 12px; overflow: visible; pointer-events: auto;
+    border: 0; background: #f5edda;
+  }
+  .left-rail { order: 2; padding-bottom: 5px; }
+  .right-rail { order: 3; padding-top: 5px; }
+  .left-rail::before, .right-rail::before {
+    color: #795a32; font: 700 10px var(--sans); letter-spacing: .14em; text-transform: uppercase;
+  }
+  .left-rail::before { content: "Colony dashboard"; }
+  .right-rail::before { content: "Trade, forage & crests"; }
+  .left-rail .panel, .right-rail .panel {
+    width: 100%; display: block !important; opacity: 1; pointer-events: auto;
+  }
+  .left-rail .event-card { display: flex !important; }
+  .quota-card { padding: 15px; }
+  .quota-crown { display: grid; }
+  .quota-card h2 { font-size: 17px; }
+  .quota-numbers { padding-top: 14px; }
+  .market-card { padding: 15px; }
+  .market-card .panel-heading h2 { font-size: 18px; }
+  .market-price strong { font-size: 30px; }
+  .right-rail .expedition-card {
+    position: static; inset: auto; width: 100%; padding: 15px;
+    border: 1px solid rgba(86, 57, 17, .11); border-radius: 17px;
+    background: rgba(255, 252, 245, .88); box-shadow: 0 6px 20px rgba(99, 66, 20, .06);
+  }
+  .expedition-card .panel-heading > div { display: block; }
+  .expedition-card #activeExpedition { display: flex; }
+  .expedition-card #forageButton { display: inline-flex; }
+  .expedition-card .round-button {
+    width: 44px; height: 44px; border: 1px solid var(--line);
+    background: transparent; color: var(--ink); box-shadow: none;
+  }
+  .build-dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 22;
+    min-height: 78px; height: auto; scroll-snap-type: none;
+  }
+  .dock-label {
+    position: sticky; left: 0; z-index: 2; min-width: 64px;
+    display: grid; align-self: stretch; place-items: center;
+    padding: 0 8px; border-right: 1px solid var(--line);
+    background: rgba(255,251,243,.98);
+  }
+  .dock-label span { font-size: 15px; }
+  .dock-label span::after { content: " →"; color: var(--honey-dark); }
+  .dock-label small { display: none; }
+  .selection-card { bottom: 12px; }
+  .bee-profile { position: fixed; top: 140px; }
+}
+
 @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
   .topbar { grid-template-columns: minmax(280px, 1fr) minmax(180px, 240px) auto; grid-template-rows: 1fr; }
   .resource-ribbon { grid-column: 1; grid-row: 1; }
