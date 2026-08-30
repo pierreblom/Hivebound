@@ -58,6 +58,7 @@
   let lastForageKey = '';
   let pendingYearEnd = false;
   let beePaintAccumulator = 0;
+  let beesInWinterHuddle = false;
   const forageCrew = {};
   const beeNames = ['Mallow Wingstead', 'Clover Quickwing', 'Pip Honeyfoot', 'Tansy Goldstripe', 'Bramble Bright', 'Ursula Beedle', 'Cecily Pollenby', 'Tilly Hivesworth', 'Juniper Buzz'];
   const beeLikes = ['warm comb and clover tea', 'sorting jars by stickiness', 'the acoustics of cell seven', 'sunflower pollen at dawn', 'short flights and long naps'];
@@ -445,7 +446,7 @@
     const seasonProgress = clamp(state.yearTime / Core.YEAR_LENGTH, 0, 1);
     elements.seasonIcon.textContent = season.icon;
     elements.seasonName.textContent = season.name;
-    elements.seasonEffect.textContent = season.id === 'frost' ? 'Workers resting • no production' : `${Math.round(season.nectar * 100)}% nectar flow`;
+    elements.seasonEffect.textContent = season.id === 'frost' ? `Huddling at Queen • −${Core.winterHoneyRate(state).toFixed(2)} honey/day` : `${Math.round(season.nectar * 100)}% nectar flow`;
     elements.seasonTimelineMarker.style.left = `${2 + seasonProgress * 96}%`;
     elements.seasonTimelineLabel.textContent = season.name;
     elements.seasonTimelineButton.setAttribute('aria-label', `Current season: ${season.name}. ${season.description}`);
@@ -675,7 +676,7 @@
     const names = ['Mallow Wingstead', 'Clover Quickwing', 'Pip Honeyfoot', 'Tansy Goldstripe', 'Bramble Bright'];
     elements.workerOfYear.textContent = names[(state.seed + state.year) % names.length];
     elements.workerCitation.textContent = state.stats.lost ? 'Held the swarm together through loss' : state.expedition ? 'Most daring field journeys' : 'Highest refinery attendance';
-    elements.yearStats.innerHTML = `<span><b>${state.stats.born}</b><small>Born</small></span><span><b>${state.stats.lost}</b><small>Lost</small></span><span><b>${number(state.stats.yearHoneyMade)}</b><small>Honey made</small></span><span><b>${number(state.stats.yearCoinsEarned)}</b><small>Crowns earned</small></span><span><b>${state.workers}</b><small>Workers</small></span>`;
+    elements.yearStats.innerHTML = `<span><b>${state.stats.born}</b><small>Born</small></span><span><b>${state.stats.lost}</b><small>Lost</small></span><span><b>${number(state.stats.yearHoneyMade)}</b><small>Honey made</small></span><span><b>${number(state.stats.yearHoneyEaten)}</b><small>Winter honey eaten</small></span><span><b>${number(state.stats.yearCoinsEarned)}</b><small>Crowns earned</small></span><span><b>${state.workers}</b><small>Workers</small></span>`;
     renderUpgradeCards();
     elements.yearModal.classList.add('visible');
   }
@@ -720,7 +721,7 @@
 
   function renderStats() {
     const owned = state.progression.upgrades.map(id => Core.LEVEL_UPGRADES.find(item => item.id === id)?.name).filter(Boolean);
-    elements.statsContent.innerHTML = `<div class="stats-hero"><span class="level-medal">${state.progression.level}</span><div><small>Colony level</small><b>${state.progression.xp} / ${state.progression.nextXp} XP</b></div></div><div class="stats-grid"><span><b>${state.workers}</b><small>Workers</small></span><span><b>${Object.keys(state.cells).length}</b><small>Cells</small></span><span><b>${number(state.stats.honeyMade)}</b><small>Honey made</small></span><span><b>${state.stats.yearsCompleted}</b><small>Years survived</small></span><span><b>${state.stats.born}</b><small>Born this year</small></span><span><b>${state.stats.lost}</b><small>Lost this year</small></span></div><h3>Level upgrades</h3><div class="upgrade-tags">${owned.length ? owned.map(name => `<span>${name}</span>`).join('') : '<p>No level rewards chosen yet.</p>'}</div>`;
+    elements.statsContent.innerHTML = `<div class="stats-hero"><span class="level-medal">${state.progression.level}</span><div><small>Colony level</small><b>${state.progression.xp} / ${state.progression.nextXp} XP</b></div></div><div class="stats-grid"><span><b>${state.workers}</b><small>Workers</small></span><span><b>${Object.keys(state.cells).length}</b><small>Cells</small></span><span><b>${number(state.stats.honeyMade)}</b><small>Honey made</small></span><span><b>${number(state.stats.honeyEaten)}</b><small>Honey eaten</small></span><span><b>${state.stats.yearsCompleted}</b><small>Years survived</small></span><span><b>${state.stats.born}</b><small>Born this year</small></span><span><b>${state.stats.lost}</b><small>Lost this year</small></span></div><h3>Level upgrades</h3><div class="upgrade-tags">${owned.length ? owned.map(name => `<span>${name}</span>`).join('') : '<p>No level rewards chosen yet.</p>'}</div>`;
   }
 
   function showBeeProfile(index) {
@@ -728,7 +729,7 @@
     elements.beeProfileName.textContent = beeNames[index % beeNames.length];
     elements.beeProfileLikes.textContent = beeLikes[index % beeLikes.length];
     elements.beeProfileDislikes.textContent = beeDislikes[index % beeDislikes.length];
-    elements.beeProfileStatus.textContent = Core.currentSeason(state).id === 'frost' ? 'Resting for winter' : index >= state.workers - away ? 'Foraging beyond the hedge' : 'Working in the hive';
+    elements.beeProfileStatus.textContent = Core.currentSeason(state).id === 'frost' ? 'Huddling with the Queen and eating honey' : index >= state.workers - away ? 'Foraging beyond the hedge' : 'Working in the hive';
     elements.beeProfile.classList.remove('hidden');
   }
 
@@ -753,8 +754,9 @@
       showToast(`Auto-sold ${event.quantity} honey at the market peak.`);
     }
     if (event.type === 'season') {
-      report(event.season.icon, event.season.name, event.season.description);
-      showToast(`${event.season.name}: ${event.season.description}`);
+      const description = event.season.id === 'frost' ? 'Workers huddle with the Queen and begin eating stored honey.' : event.season.description;
+      report(event.season.icon, event.season.name, description);
+      showToast(`${event.season.name}: ${description}`);
       tone(event.season.id === 'frost' ? 310 : 680, .12);
     }
     if (event.type === 'scoutComplete') {
@@ -850,12 +852,39 @@
     bee.rotation = Math.atan2(bee.targetY - bee.startY, bee.targetX - bee.startX) * 180 / Math.PI;
   }
 
+  function winterBeeTarget(index) {
+    const angle = index * 2.399963;
+    const radius = index ? 19 + Math.sqrt(index) * 8 : 10;
+    return {
+      x: CENTER.x + Math.cos(angle) * radius,
+      y: CENTER.y + Math.sin(angle) * radius * .72
+    };
+  }
+
   function animateBees(dt) {
-    if (!paused && Core.currentSeason(state).id !== 'frost') visualTime += dt * speed;
+    const winter = Core.currentSeason(state).id === 'frost';
+    if (!paused && !winter) visualTime += dt * speed;
     if (MOBILE_LAYOUT) {
       beePaintAccumulator += dt;
       if (beePaintAccumulator < 1 / 30) return;
       beePaintAccumulator = 0;
+    }
+    if (winter) {
+      beesInWinterHuddle = true;
+      beeVisuals.forEach(bee => {
+        const target = winterBeeTarget(bee.index);
+        const approach = Math.min(1, dt * 4.2);
+        bee.x += (target.x - bee.x) * approach;
+        bee.y += (target.y - bee.y) * approach;
+        bee.rotation += (0 - bee.rotation) * approach;
+        bee.node.setAttribute('transform', `translate(${bee.x} ${bee.y}) rotate(${bee.rotation}) scale(.9)`);
+        bee.node.style.opacity = '1';
+      });
+      return;
+    }
+    if (beesInWinterHuddle) {
+      beesInWinterHuddle = false;
+      beeVisuals.forEach(bee => chooseBeeTarget(bee));
     }
     beeVisuals.forEach(bee => {
       let progress = (visualTime - bee.started) / bee.duration;

@@ -452,6 +452,8 @@ button, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action
 .cell-brood .hex-shape { fill: #a7a18d; stroke: #77715e; }
 .cell-picture, .bee-picture { pointer-events: none; }
 .pixel-sprite { image-rendering: pixelated; }
+body[data-season="frost"] .cell-queen .hex-shape { fill: #b9e4f2; stroke: #659eb7; }
+body[data-season="frost"] .cell-queen .cell-label { fill: #315e71; }
 .cell-resource-count { font: 600 21px var(--serif); text-anchor: middle; dominant-baseline: central; fill: #5c4a28; pointer-events: none; }
 .picture-label { font-size: 7px; fill: rgba(255,255,255,.82) !important; }
 .queen-picture { filter: drop-shadow(0 4px 3px rgba(37,28,16,.26)); }

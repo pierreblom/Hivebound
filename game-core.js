@@ -11,6 +11,7 @@
   const MARKET_MIN_PRICE = 3.2;
   const MARKET_MAX_PRICE = 8;
   const AUTO_SELL_PRICE = 7.2;
+  const WINTER_HONEY_PER_BEE = .02;
 
   const BIOMES = {
     sunmeadow: { id: 'sunmeadow', name: 'Sunmeadow Vale', icon: '✿', tagline: 'Balanced seasons and generous wildflowers.', temperature: 0, humidity: 0, nectar: 1, wax: 1, quota: 1, raid: 1, unlock: null, color: '#8fba67' },
@@ -167,7 +168,7 @@
       raid: null,
       hazards: { dryness: 0, warned: false },
       emergency: { type: null, remaining: 0 },
-      stats: { honeyMade: 0, honeySold: 0, coinsEarned: 0, cellsBuilt: 0, yearsCompleted: 0, born: 0, lost: 0, yearHoneyMade: 0, yearCoinsEarned: 0 },
+      stats: { honeyMade: 0, honeyEaten: 0, honeySold: 0, coinsEarned: 0, cellsBuilt: 0, yearsCompleted: 0, born: 0, lost: 0, yearHoneyMade: 0, yearHoneyEaten: 0, yearCoinsEarned: 0 },
       flags: { raidResolved: false, tutorialStep: 0, gameOver: false, seasonIndex: 0, upgradeRerolls: 0, storyTimer: 0 }
     };
   }
@@ -396,6 +397,11 @@
     return { nectar: nectar * common * biome.nectar * season.nectar * rally, processing: processing * common * rally, hatch: hatch * common, availableWorkers, workerFactor };
   }
 
+  function winterHoneyRate(state) {
+    if (currentSeason(state).id !== 'frost') return 0;
+    return (state.workers + 1) * WINTER_HONEY_PER_BEE;
+  }
+
   function broodStage(progress) {
     if (progress < .34) return 'egg';
     if (progress < .72) return 'larva';
@@ -597,6 +603,12 @@
     state.resources.honey += converted;
     state.stats.honeyMade += converted;
     state.stats.yearHoneyMade += converted;
+    if (winter) {
+      const eaten = Math.min(state.resources.honey, winterHoneyRate(state) * dt);
+      state.resources.honey -= eaten;
+      state.stats.honeyEaten += eaten;
+      state.stats.yearHoneyEaten += eaten;
+    }
     if (!winter) state.resources.wax += (.025 + rates.availableWorkers * .005) * dt * currentBiome(state).wax;
 
     const broodEntries = Object.entries(state.cells).filter(([, cell]) => cell.type === 'brood');
@@ -740,6 +752,7 @@
     state.stats.born = 0;
     state.stats.lost = 0;
     state.stats.yearHoneyMade = 0;
+    state.stats.yearHoneyEaten = 0;
     state.stats.yearCoinsEarned = 0;
     if (state.year === 3) state.radius = 3;
     state.resources.wax += 28 + state.year * 4;
@@ -779,11 +792,11 @@
   }
 
   return {
-    YEAR_LENGTH, BASE_QUOTA, MARKET_MIN_PRICE, MARKET_MAX_PRICE, AUTO_SELL_PRICE, CELL_TYPES, UPGRADES, LEVEL_UPGRADES, FIELD_UPGRADES, FORAGE_LOCATIONS, BIOMES, DIFFICULTIES, SEASONS,
+    YEAR_LENGTH, BASE_QUOTA, MARKET_MIN_PRICE, MARKET_MAX_PRICE, AUTO_SELL_PRICE, WINTER_HONEY_PER_BEE, CELL_TYPES, UPGRADES, LEVEL_UPGRADES, FIELD_UPGRADES, FORAGE_LOCATIONS, BIOMES, DIFFICULTIES, SEASONS,
     key, parseKey, distance, axialCoordinates, neighbors, seededRandom,
     createInitialState, normalizeState, countCells, nectarPerGarden, adjacentCount, cellCost,
     canBuild, buildCell, demolishCell, upgradeCell, cellBonuses, climate, storageCapacity,
-    productionRates, startExpedition, startScouting, upgradeForageLocation, deliverHoney, sellHoney, raidStrength, raidDefense, resolveRaid,
+    productionRates, winterHoneyRate, startExpedition, startScouting, upgradeForageLocation, deliverHoney, sellHoney, raidStrength, raidDefense, resolveRaid,
     step, upgradeChoices, rerollUpgrades, chooseUpgradeAndAdvance, markGameOver, sealBonus, levelBonus,
     gainExperience, levelUpgradeChoices, chooseLevelUpgrade, pheromoneRadius, pheromonePower,
     currentBiome, currentDifficulty, currentSeason, broodStage, feedBrood, emergencyAction

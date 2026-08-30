@@ -174,6 +174,22 @@ test('all hive work and forage progress stop during Long Frost', () => {
   assert.equal(Core.startExpedition(resting, 'clover', 1).ok, false);
 });
 
+test('the winter cluster eats stored honey together', () => {
+  const state = Core.createInitialState(42);
+  state.resources.honey = 20;
+  state.yearTime = Core.YEAR_LENGTH * .8;
+  const before = state.resources.honey;
+  const rate = Core.winterHoneyRate(state);
+  Core.step(state, 1, () => .5);
+  assert.equal(rate, (state.workers + 1) * Core.WINTER_HONEY_PER_BEE);
+  assert.ok(Math.abs(before - state.resources.honey - rate) < 1e-9);
+  assert.equal(state.stats.honeyEaten, rate);
+  assert.equal(state.stats.yearHoneyEaten, rate);
+
+  state.yearTime = Core.YEAR_LENGTH * .2;
+  assert.equal(Core.winterHoneyRate(state), 0);
+});
+
 test('wasps attack once in every year, including year one', () => {
   const state = Core.createInitialState(42);
   state.yearTime = Core.YEAR_LENGTH * .62 - .1;
