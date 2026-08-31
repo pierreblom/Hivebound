@@ -32,10 +32,11 @@
     'mobileMarketTrend', 'mobileMarketArea',
     'mobileMarketLine', 'mobileAutoSellToggle', 'mobileReserveInput', 'seasonTimelineButton',
     'seasonTimelineMarker', 'seasonTimelineLabel', 'levelButton', 'levelValue', 'levelProgress',
-    'upgradeCellButton', 'beeProfile', 'closeBeeProfile', 'beeProfileName', 'beeProfileStatus',
-    'beeProfileLikes', 'beeProfileDislikes', 'forageStatus', 'showStats', 'statsModal', 'statsContent',
+    'upgradeCellButton', 'beeProfile', 'closeBeeProfile', 'beeProfileImage', 'beeProfileName', 'beeProfileStatus',
+    'beeProfileRole', 'beeRoleChoices', 'beeProfileLikes', 'beeProfileDislikes', 'forageStatus', 'showStats', 'statsModal', 'statsContent',
     'levelUpModal', 'levelUpNumber', 'levelUpgradeChoices', 'raidModal', 'raidAttack', 'raidDefense',
-    'sealDiscoveryModal', 'sealDiscoveryName', 'sealDiscoveryText', 'continueSealDiscovery'
+    'sealDiscoveryModal', 'sealDiscoveryName', 'sealDiscoveryText', 'continueSealDiscovery',
+    'showKitchen', 'kitchenModal', 'chefHoneyRate', 'chefShieldStatus', 'chefFeastStatus', 'serveFeastButton'
   ].map(id => [id, document.getElementById(id)]));
 
   let state = Core.createInitialState();
@@ -63,6 +64,7 @@
   let beesInWinterHuddle = false;
   let pinchGesture = null;
   let suppressBoardTapUntil = 0;
+  let selectedBeeIndex = null;
   const forageCrew = {};
   const beeNames = ['Mallow Wingstead', 'Clover Quickwing', 'Pip Honeyfoot', 'Tansy Goldstripe', 'Bramble Bright', 'Ursula Beedle', 'Cecily Pollenby', 'Tilly Hivesworth', 'Juniper Buzz'];
   const beeLikes = ['warm comb and clover tea', 'sorting jars by stickiness', 'the acoustics of cell seven', 'sunflower pollen at dawn', 'short flights and long naps'];
@@ -490,6 +492,22 @@
     elements.emergencyStatus.textContent = active ? `${actionNames[state.emergency.type]} • ${Math.ceil(state.emergency.remaining)} days` : 'Warm • Mist • Rally';
   }
 
+  function renderKitchen() {
+    const status = Core.chefStatus(state);
+    elements.chefHoneyRate.textContent = status.winter
+      ? `${status.rate.toFixed(2)} honey/day • ${Math.round(status.reduction * 100)}% saved`
+      : 'Kitchen opens in Long Frost';
+    elements.chefShieldStatus.textContent = status.shield
+      ? 'One worker protected at the next failed raid'
+      : 'No feast shield stored';
+    if (status.feastActive) elements.chefFeastStatus.textContent = 'This winter’s feast is warming the cluster. Honey appetite is reduced by 60%, and a worker shield has been prepared.';
+    else if (!status.winter) elements.chefFeastStatus.textContent = 'The Chef is preserving honey for Long Frost. Return in winter to serve the once-a-year feast.';
+    else if (state.resources.honey < Core.WINTER_FEAST_COST) elements.chefFeastStatus.textContent = `The kitchen needs ${Core.WINTER_FEAST_COST} honey. You currently have ${Math.floor(state.resources.honey)}.`;
+    else elements.chefFeastStatus.textContent = 'Serve one feast this winter to cut honey appetite by 60% and protect one worker during the next failed wasp raid.';
+    elements.serveFeastButton.disabled = !status.feastAvailable || state.resources.honey < Core.WINTER_FEAST_COST;
+    elements.serveFeastButton.innerHTML = status.feastActive ? 'Winter Feast served <span>✓</span>' : `Serve Winter Feast <span>${Core.WINTER_FEAST_COST} honey</span>`;
+  }
+
   function renderBroodModal() {
     const cell = broodCoord && state.cells[broodCoord];
     if (!cell || cell.type !== 'brood') return;
@@ -591,6 +609,7 @@
     document.body.dataset.biome = state.config?.biome || 'sunmeadow';
     if (selectedCell && state.cells[selectedCell]) showSelection(selectedCell);
     if (elements.broodModal.classList.contains('visible')) renderBroodModal();
+    if (elements.kitchenModal.classList.contains('visible')) renderKitchen();
     if (elements.forageModal.classList.contains('visible')) {
       renderForageChoices();
       renderForageProgress();
@@ -755,15 +774,35 @@
 
   function renderStats() {
     const owned = state.progression.upgrades.map(id => Core.LEVEL_UPGRADES.find(item => item.id === id)?.name).filter(Boolean);
-    elements.statsContent.innerHTML = `<div class="stats-hero"><span class="level-medal">${state.progression.level}</span><div><small>Colony level</small><b>${state.progression.xp} / ${state.progression.nextXp} XP</b></div></div><div class="stats-grid"><span><b>${state.workers}</b><small>Workers</small></span><span><b>${Object.keys(state.cells).length}</b><small>Cells</small></span><span><b>${number(state.stats.honeyMade)}</b><small>Honey made</small></span><span><b>${number(state.stats.honeyEaten)}</b><small>Honey eaten</small></span><span><b>${state.stats.yearsCompleted}</b><small>Years survived</small></span><span><b>${state.stats.born}</b><small>Born this year</small></span><span><b>${state.stats.lost}</b><small>Lost this year</small></span></div><h3>Level upgrades</h3><div class="upgrade-tags">${owned.length ? owned.map(name => `<span>${name}</span>`).join('') : '<p>No level rewards chosen yet.</p>'}</div>`;
+    const roster = Array.from({ length: state.workers }, (_, index) => {
+      const role = Core.workerRole(state, index);
+      return `<button class="worker-card" data-worker-index="${index}"><img src="${role.asset}" alt=""><b>${beeNames[index % beeNames.length]}</b><small>${role.name}</small></button>`;
+    }).join('');
+    elements.statsContent.innerHTML = `<div class="stats-hero"><span class="level-medal">${state.progression.level}</span><div><small>Colony level</small><b>${state.progression.xp} / ${state.progression.nextXp} XP</b></div></div><div class="stats-grid"><span><b>${state.workers}</b><small>Workers</small></span><span><b>${Object.keys(state.cells).length}</b><small>Cells</small></span><span><b>${number(state.stats.honeyMade)}</b><small>Honey made</small></span><span><b>${number(state.stats.honeyEaten)}</b><small>Honey eaten</small></span><span><b>${state.stats.yearsCompleted}</b><small>Years survived</small></span><span><b>${state.stats.born}</b><small>Born this year</small></span><span><b>${state.stats.lost}</b><small>Lost this year</small></span></div><h3>Worker roster</h3><p class="guild-hint">Choose a worker to change their profession and colony bonus.</p><div class="worker-roster">${roster}</div><h3>Level upgrades</h3><div class="upgrade-tags">${owned.length ? owned.map(name => `<span>${name}</span>`).join('') : '<p>No level rewards chosen yet.</p>'}</div>`;
+    elements.statsContent.querySelectorAll('[data-worker-index]').forEach(button => button.addEventListener('click', () => {
+      elements.statsModal.classList.remove('visible');
+      showBeeProfile(Number(button.dataset.workerIndex));
+    }));
   }
 
   function showBeeProfile(index) {
     const away = state.expedition?.bees || 0;
+    const role = Core.workerRole(state, index);
+    selectedBeeIndex = index;
+    elements.beeProfileImage.src = role.asset;
     elements.beeProfileName.textContent = beeNames[index % beeNames.length];
     elements.beeProfileLikes.textContent = beeLikes[index % beeLikes.length];
     elements.beeProfileDislikes.textContent = beeDislikes[index % beeDislikes.length];
     elements.beeProfileStatus.textContent = Core.currentSeason(state).id === 'frost' ? 'Huddling with the Queen and eating honey' : index >= state.workers - away ? 'Foraging beyond the hedge' : 'Working in the hive';
+    elements.beeProfileRole.textContent = `${role.icon} ${role.name} • ${role.effect}`;
+    elements.beeRoleChoices.innerHTML = Object.values(Core.WORKER_ROLES).map(option => `<button class="bee-role-choice${option.id === role.id ? ' selected' : ''}" data-role="${option.id}"><img src="${option.asset}" alt=""><b>${option.name}</b><small>${option.effect}</small></button>`).join('');
+    elements.beeRoleChoices.querySelectorAll('[data-role]').forEach(button => button.addEventListener('click', () => {
+      const result = Core.assignWorkerRole(state, selectedBeeIndex, button.dataset.role);
+      if (!result.ok) return showToast(result.reason);
+      syncBees(); showBeeProfile(selectedBeeIndex); saveGame(); render(true);
+      showToast(`${elements.beeProfileName.textContent} is now a ${result.role.name}.`);
+      tone(820, .12);
+    }));
     elements.beeProfile.classList.remove('hidden');
   }
 
@@ -788,7 +827,7 @@
       showToast(`Auto-sold ${event.quantity} honey at the market peak.`);
     }
     if (event.type === 'season') {
-      const description = event.season.id === 'frost' ? 'Workers huddle with the Queen and begin eating stored honey.' : event.season.description;
+      const description = event.season.id === 'frost' ? 'Workers huddle with the Queen while the Royal Honey Chef stretches every jar. Tap Long Frost to open the kitchen.' : event.season.description;
       report(event.season.icon, event.season.name, description);
       showToast(`${event.season.name}: ${description}`);
       tone(event.season.id === 'frost' ? 310 : 680, .12);
@@ -827,9 +866,18 @@
         tone(310, .18);
       } else if (event.queenFell) {
         showGameOver('queen');
+      } else if (event.saved && !event.lost) {
+        const chefRescue = event.chefSaved ? 'The Winter Feast shielded one worker' : 'The hive medics treated every wounded worker';
+        report(event.chefSaved ? '♨' : '✚', event.chefSaved ? 'The Winter Feast holds' : 'Medics save the swarm', `${chefRescue}, and the whole swarm returned to duty.`);
+        showToast(event.chefSaved ? 'The Royal Honey Chef prevented a loss!' : 'The hive medics prevented every loss!');
+        tone(620, .18);
       } else {
-        report('!', 'Wasps breach the comb', `${event.lost} workers were lost. Build more Sentinel Posts before next year.`);
-        showToast(`Raid survived, but ${event.lost} workers were lost.`);
+        const rescueParts = [];
+        if (event.medicSaved) rescueParts.push(`Medics saved ${event.medicSaved}`);
+        if (event.chefSaved) rescueParts.push('the Winter Feast saved 1');
+        const rescue = rescueParts.length ? ` ${rescueParts.join(' and ')}.` : '';
+        report('!', 'Wasps breach the comb', `${event.lost} workers were lost.${rescue} Build more Sentinel Posts before next year.`);
+        showToast(`Raid survived: ${event.lost} lost${event.saved ? `, ${event.saved} saved` : ''}.`);
         tone(140, .25);
         renderBoard();
       }
@@ -856,17 +904,23 @@
       const removed = beeVisuals.pop();
       removed.node.remove();
     }
+    beeVisuals.forEach(bee => {
+      const role = Core.workerRole(state, bee.index);
+      bee.picture.setAttribute('href', role.asset);
+      bee.node.setAttribute('aria-label', `View ${beeNames[bee.index % beeNames.length]}, ${role.name}`);
+    });
   }
 
   function makeBee(index) {
     const node = svg('g', { class: 'bee', role: 'button', tabindex: '0', 'aria-label': `View ${beeNames[index % beeNames.length]}` });
     node.appendChild(svg('circle', { class: 'bee-hit-target', cx: 0, cy: 0, r: 24 }));
-    node.appendChild(svg('image', { class: 'bee-picture pixel-sprite', href: 'assets/hive/worker-bee.png', x: -28, y: -22, width: 56, height: 45 }));
+    const picture = svg('image', { class: 'bee-picture role-bee-picture pixel-sprite', href: Core.workerRole(state, index).asset, x: -34, y: -34, width: 68, height: 68 });
+    node.appendChild(picture);
     elements.beeLayer.appendChild(node);
     node.addEventListener('click', event => { event.stopPropagation(); showBeeProfile(index); });
     node.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showBeeProfile(index); });
     const start = hexCenter(0, 0);
-    return { node, index, x: start.x + (index % 3) * 7, y: start.y + Math.floor(index / 3) * 4, startX: start.x, startY: start.y, targetX: start.x, targetY: start.y, started: visualTime, duration: 1, rotation: 0 };
+    return { node, picture, index, x: start.x + (index % 3) * 7, y: start.y + Math.floor(index / 3) * 4, startX: start.x, startY: start.y, targetX: start.x, targetY: start.y, started: visualTime, duration: 1, rotation: 0 };
   }
 
   function chooseBeeTarget(bee) {
@@ -1051,6 +1105,11 @@
   elements.climateToolsButton.addEventListener('click', () => elements.climateModal.classList.add('visible'));
   [elements.seasonButton, elements.seasonTimelineButton].forEach(button => button.addEventListener('click', () => {
     const season = Core.currentSeason(state);
+    if (season.id === 'frost') {
+      renderKitchen();
+      elements.kitchenModal.classList.add('visible');
+      return;
+    }
     showToast(`${season.name}: ${season.description} Nectar output is ${Math.round(season.nectar * 100)}%.`);
   }));
   document.querySelectorAll('.emergency-action').forEach(button => button.addEventListener('click', () => {
@@ -1067,7 +1126,15 @@
   elements.saveGameButton.addEventListener('click', () => { saveGame(); showToast('Colony saved to this browser.'); });
   elements.newColonyMenu.addEventListener('click', () => { elements.menuModal.classList.remove('visible'); openSetup(); });
   elements.showCrests.addEventListener('click', () => { elements.menuModal.classList.remove('visible'); renderCrestArchive(); elements.crestsModal.classList.add('visible'); });
+  elements.showKitchen.addEventListener('click', () => { elements.menuModal.classList.remove('visible'); renderKitchen(); elements.kitchenModal.classList.add('visible'); });
   elements.showStats.addEventListener('click', () => { elements.menuModal.classList.remove('visible'); renderStats(); elements.statsModal.classList.add('visible'); });
+  elements.serveFeastButton.addEventListener('click', () => {
+    const result = Core.serveWinterFeast(state);
+    if (!result.ok) return showToast(result.reason);
+    report('♨', 'The Winter Feast is served', 'The cluster will eat 60% less honey through Long Frost, and one worker is protected during the next failed raid.');
+    showToast('Winter Feast served — one worker shield stored.');
+    renderKitchen(); render(true); saveGame(); tone(760, .18);
+  });
   elements.levelButton.addEventListener('click', () => { if (state.progression.pendingLevels) maybeShowLevelUp(); else { renderStats(); elements.statsModal.classList.add('visible'); } });
   elements.closeBeeProfile.addEventListener('click', () => elements.beeProfile.classList.add('hidden'));
   document.querySelectorAll('.raid-action').forEach(button => button.addEventListener('click', () => {

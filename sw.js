@@ -1,10 +1,12 @@
-const CACHE = 'hivebound-v0.6.7';
+const CACHE = 'hivebound-v0.8.0';
 const LOCAL_ASSETS = [
   '/', '/index.html', '/styles.css', '/game-core.js', '/app.js', '/manifest.webmanifest',
   '/icons/hivebound-icon.svg', '/icons/hivebound-icon-192.png', '/icons/hivebound-icon-512.png',
   '/assets/illustrations/season-cycle.png',
   '/assets/icons/wax-comb.svg', '/assets/icons/nectar-flower.svg', '/assets/icons/honey-jar.svg', '/assets/icons/crown-coins.svg',
-  '/assets/hive/queen-bee.png', '/assets/hive/worker-bee.png', '/assets/hive/wasp.png',
+  '/assets/hive/queen-bee.png', '/assets/hive/worker-bee.png', '/assets/hive/wasp.png', '/assets/hive/royal-honey-chef.png',
+  '/assets/hive/roles/scout.png', '/assets/hive/roles/guard.png', '/assets/hive/roles/medic.png',
+  '/assets/hive/roles/gardener.png', '/assets/hive/roles/carrier.png', '/assets/hive/roles/builder.png',
   '/assets/hive/egg.svg', '/assets/hive/larva.svg', '/assets/hive/pupa.svg'
 ];
 

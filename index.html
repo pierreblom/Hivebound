@@ -145,9 +145,11 @@
 
           <div id="beeProfile" class="bee-profile hidden">
             <button id="closeBeeProfile" class="close-button" aria-label="Close bee profile">×</button>
-            <img src="assets/hive/worker-bee.png" alt="" />
+            <img id="beeProfileImage" src="assets/hive/roles/scout.png" alt="" />
             <p class="eyebrow">Worker profile</p><h3 id="beeProfileName">Mallow Wingstead</h3><strong id="beeProfileStatus">Working</strong>
+            <p id="beeProfileRole" class="bee-profile-role">Scout</p>
             <dl><div><dt>Likes</dt><dd id="beeProfileLikes">warm comb</dd></div><div><dt>Dislikes</dt><dd id="beeProfileDislikes">sudden rain</dd></div></dl>
+            <p class="role-picker-label">Assign a profession</p><div id="beeRoleChoices" class="bee-role-choices"></div>
           </div>
 
           <div id="toast" class="toast" role="status"></div>
@@ -271,7 +273,7 @@
     <div id="menuModal" class="modal-backdrop">
       <section class="modal menu-modal">
         <button class="close-button modal-close" data-close="menuModal">×</button>
-        <div class="menu-sidebar"><p class="eyebrow">Hivebound</p><h2>Colony menu</h2><button id="resumeGame" class="menu-nav active">Resume game</button><button id="saveGameButton" class="menu-nav">Save colony</button><button id="showStats" class="menu-nav">Colony stats</button><button id="newColonyMenu" class="menu-nav">New colony</button><button id="showCrests" class="menu-nav">Crest archive</button></div>
+        <div class="menu-sidebar"><p class="eyebrow">Hivebound</p><h2>Colony menu</h2><button id="resumeGame" class="menu-nav active">Resume game</button><button id="saveGameButton" class="menu-nav">Save colony</button><button id="showKitchen" class="menu-nav">Royal kitchen</button><button id="showStats" class="menu-nav">Worker guild</button><button id="newColonyMenu" class="menu-nav">New colony</button><button id="showCrests" class="menu-nav">Crest archive</button></div>
         <div class="settings-pane"><p class="eyebrow">Settings</p><h3>How the hive feels</h3><label class="setting-row"><span><b>Sound effects</b><small>Build, market, and alert tones</small></span><input id="soundToggle" type="checkbox" checked/></label><label class="setting-row"><span><b>Reduced motion</b><small>Calmer workers and transitions</small></span><input id="motionToggle" type="checkbox"/></label><label class="setting-row"><span><b>Field hints</b><small>Show contextual guidance</small></span><input id="hintsToggle" type="checkbox" checked/></label><div class="run-identity"><span id="menuBiomeIcon">✿</span><div><small>Current run</small><b id="menuRunIdentity">Sunmeadow Vale • Worker’s Oath</b></div></div></div>
       </section>
     </div>
@@ -302,7 +304,15 @@
     </div>
 
     <div id="statsModal" class="modal-backdrop">
-      <section class="modal stats-modal"><button class="close-button modal-close" data-close="statsModal">×</button><p class="eyebrow">Colony ledger</p><h2>Hive statistics</h2><div id="statsContent" class="stats-content"></div></section>
+      <section class="modal stats-modal"><button class="close-button modal-close" data-close="statsModal">×</button><p class="eyebrow">Worker guild</p><h2>Assign colony jobs</h2><div id="statsContent" class="stats-content"></div></section>
+    </div>
+
+    <div id="kitchenModal" class="modal-backdrop">
+      <section class="modal kitchen-modal">
+        <button class="close-button modal-close" data-close="kitchenModal">×</button>
+        <div class="kitchen-portrait"><img src="assets/hive/royal-honey-chef.png" alt="Royal Honey Chef holding a steaming honey pot" /></div>
+        <div class="kitchen-copy"><p class="eyebrow">Royal kitchen</p><h2>The Honey Chef</h2><p>The Chef stretches every jar through Long Frost, reducing the colony’s winter honey appetite by 25%.</p><div class="kitchen-stats"><span><small>Current winter use</small><b id="chefHoneyRate">Kitchen opens in winter</b></span><span><small>Feast protection</small><b id="chefShieldStatus">No feast shield stored</b></span></div><div id="chefFeastStatus" class="chef-feast-status">When Long Frost arrives, spend 8 honey on a feast to cut winter appetite by 60% and protect one worker during the next failed wasp raid.</div><button id="serveFeastButton" class="primary-button full">Serve Winter Feast <span>8 honey</span></button></div>
+      </section>
     </div>
 
     <div id="gameOverModal" class="modal-backdrop">

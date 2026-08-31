@@ -7,11 +7,14 @@
 
   const YEAR_LENGTH = 180;
   const BASE_QUOTA = 10;
-  const SAVE_VERSION = 4;
+  const SAVE_VERSION = 5;
   const MARKET_MIN_PRICE = 3.2;
   const MARKET_MAX_PRICE = 8;
   const AUTO_SELL_PRICE = 7.2;
   const WINTER_HONEY_PER_BEE = .02;
+  const WINTER_FEAST_COST = 8;
+  const CHEF_HONEY_REDUCTION = .25;
+  const FEAST_HONEY_REDUCTION = .6;
 
   const BIOMES = {
     sunmeadow: { id: 'sunmeadow', name: 'Sunmeadow Vale', icon: '✿', tagline: 'Balanced seasons and generous wildflowers.', temperature: 0, humidity: 0, nectar: 1, wax: 1, quota: 1, raid: 1, unlock: null, color: '#8fba67' },
@@ -100,6 +103,16 @@
     gmo: { id: 'gmo', name: 'GMO blooms', icon: '⚗', cost: 100, description: '+35% yield, but +3% risk.', yield: .35, risk: .03 }
   };
 
+  const WORKER_ROLES = {
+    scout: { id: 'scout', name: 'Scout', icon: '⌕', asset: 'assets/hive/roles/scout.png', description: 'Maps fields and shortens every journey.', effect: 'Expeditions 8% faster and scouting 18% faster.' },
+    guard: { id: 'guard', name: 'Guard', icon: '♜', asset: 'assets/hive/roles/guard.png', description: 'Trains at the hive entrance and meets wasps head-on.', effect: '+4 hive defence during raids.' },
+    medic: { id: 'medic', name: 'Medic', icon: '✚', asset: 'assets/hive/roles/medic.png', description: 'Carries royal jelly and treats wounded workers.', effect: 'Saves one worker after a failed raid.' },
+    gardener: { id: 'gardener', name: 'Gardener', icon: '✿', asset: 'assets/hive/roles/gardener.png', description: 'Tends the flowers that feed the colony.', effect: '+12% nectar production while in the hive.' },
+    carrier: { id: 'carrier', name: 'Carrier', icon: '▤', asset: 'assets/hive/roles/carrier.png', description: 'Hauls larger loads home from the fields.', effect: '+12% nectar and wax from expeditions.' },
+    builder: { id: 'builder', name: 'Builder', icon: '⬡', asset: 'assets/hive/roles/builder.png', description: 'Shapes comb efficiently and wastes less wax.', effect: 'New cells cost 6% less wax.' }
+  };
+  const WORKER_ROLE_ORDER = Object.keys(WORKER_ROLES);
+
   const FORAGE_LOCATIONS = [
     { id: 'clover', name: 'Bluebell Woods', icon: '♧', description: 'Safe and simple, close to home.', duration: 18, risk: 0, nectar: 42, wax: 12, bees: 1, cost: 0, level: 1, scoutCost: 0 },
     { id: 'orchard', name: 'Sunflower Fields', icon: '✿', description: 'Deep-veined flowers with a quick flight home.', duration: 26, risk: .06, nectar: 70, wax: 20, bees: 1, cost: 6, level: 2, scoutCost: 100 },
@@ -148,6 +161,7 @@
       resources: { wax: 140, nectar: 35, honey: 0, coins: 90 },
       quota: { target: Math.round(BASE_QUOTA * difficulty.quota * biome.quota), delivered: 0 },
       workers: 4,
+      workerRoles: WORKER_ROLE_ORDER.slice(0, 4),
       lostWorkers: 0,
       cells: {
         '0,-1': { type: 'processor', builtAt: 0, level: 1 },
@@ -168,7 +182,8 @@
       raid: null,
       hazards: { dryness: 0, warned: false },
       emergency: { type: null, remaining: 0 },
-      stats: { honeyMade: 0, honeyEaten: 0, honeySold: 0, coinsEarned: 0, cellsBuilt: 0, yearsCompleted: 0, born: 0, lost: 0, yearHoneyMade: 0, yearHoneyEaten: 0, yearCoinsEarned: 0 },
+      chef: { feastYear: 0, shield: 0 },
+      stats: { honeyMade: 0, honeyEaten: 0, honeySold: 0, coinsEarned: 0, cellsBuilt: 0, yearsCompleted: 0, born: 0, lost: 0, feastsServed: 0, yearHoneyMade: 0, yearHoneyEaten: 0, yearCoinsEarned: 0 },
       flags: { raidResolved: false, tutorialStep: 0, gameOver: false, seasonIndex: 0, upgradeRerolls: 0, storyTimer: 0 }
     };
   }
@@ -278,9 +293,30 @@
     return neighbors(q, r).some(([nq, nr]) => Boolean(state.cells[key(nq, nr)]));
   }
 
+  function workerRole(state, index) {
+    return WORKER_ROLES[state.workerRoles?.[index]] || WORKER_ROLES[WORKER_ROLE_ORDER[index % WORKER_ROLE_ORDER.length]];
+  }
+
+  function roleCount(state, roleId, limit = state.workers) {
+    const count = Math.max(0, Math.min(state.workers, limit));
+    let total = 0;
+    for (let index = 0; index < count; index += 1) if (workerRole(state, index).id === roleId) total += 1;
+    return total;
+  }
+
+  function assignWorkerRole(state, index, roleId) {
+    if (!Number.isInteger(index) || index < 0 || index >= state.workers) return { ok: false, reason: 'That worker is not in this colony.' };
+    if (!WORKER_ROLES[roleId]) return { ok: false, reason: 'Unknown worker profession.' };
+    if (!Array.isArray(state.workerRoles)) state.workerRoles = [];
+    while (state.workerRoles.length < state.workers) state.workerRoles.push(WORKER_ROLE_ORDER[state.workerRoles.length % WORKER_ROLE_ORDER.length]);
+    state.workerRoles[index] = roleId;
+    return { ok: true, role: WORKER_ROLES[roleId] };
+  }
+
   function cellCost(state, type) {
     const base = CELL_TYPES[type]?.cost || 0;
-    return Math.max(1, Math.round(base * (1 - sealBonus(state, 'buildDiscount'))));
+    const discount = Math.min(.6, sealBonus(state, 'buildDiscount') + roleCount(state, 'builder') * .06);
+    return Math.max(1, Math.round(base * (1 - discount)));
   }
 
   function canBuild(state, coordKey, type) {
@@ -394,12 +430,41 @@
     }
     const smallBatch = state.workers <= 6 && state.seals.includes('smallBatch') ? 1.4 : 1;
     const common = conditions.efficiency * (.55 + .45 * workerFactor) * smallBatch;
-    return { nectar: nectar * common * biome.nectar * season.nectar * rally, processing: processing * common * rally, hatch: hatch * common, availableWorkers, workerFactor };
+    const gardenerBonus = 1 + roleCount(state, 'gardener', availableWorkers) * .12;
+    return { nectar: nectar * common * biome.nectar * season.nectar * rally * gardenerBonus, processing: processing * common * rally, hatch: hatch * common, availableWorkers, workerFactor };
   }
 
   function winterHoneyRate(state) {
     if (currentSeason(state).id !== 'frost') return 0;
-    return (state.workers + 1) * WINTER_HONEY_PER_BEE;
+    const reduction = state.chef?.feastYear === state.year ? FEAST_HONEY_REDUCTION : CHEF_HONEY_REDUCTION;
+    return (state.workers + 1) * WINTER_HONEY_PER_BEE * (1 - reduction);
+  }
+
+  function chefStatus(state) {
+    const winter = currentSeason(state).id === 'frost';
+    const feastActive = state.chef?.feastYear === state.year;
+    return {
+      winter,
+      feastActive,
+      feastAvailable: winter && !feastActive,
+      reduction: feastActive ? FEAST_HONEY_REDUCTION : CHEF_HONEY_REDUCTION,
+      rate: winterHoneyRate(state),
+      shield: state.chef?.shield || 0
+    };
+  }
+
+  function serveWinterFeast(state) {
+    if (currentSeason(state).id !== 'frost') return { ok: false, reason: 'The Royal Honey Chef serves the feast only during Long Frost.' };
+    if (state.chef?.feastYear === state.year) return { ok: false, reason: 'This winter’s feast has already been served.' };
+    if (state.resources.honey < WINTER_FEAST_COST) return { ok: false, reason: `You need ${WINTER_FEAST_COST} honey for the Winter Feast.` };
+    if (!state.chef) state.chef = { feastYear: 0, shield: 0 };
+    state.resources.honey -= WINTER_FEAST_COST;
+    state.chef.feastYear = state.year;
+    state.chef.shield = Math.max(1, state.chef.shield || 0);
+    state.stats.honeyEaten += WINTER_FEAST_COST;
+    state.stats.yearHoneyEaten += WINTER_FEAST_COST;
+    state.stats.feastsServed = (state.stats.feastsServed || 0) + 1;
+    return { ok: true, cost: WINTER_FEAST_COST, reduction: FEAST_HONEY_REDUCTION, shield: state.chef.shield };
   }
 
   function broodStage(progress) {
@@ -453,13 +518,14 @@
     const lost = random() < effectiveRisk ? 1 : 0;
     const extraCrew = Math.max(0, state.expedition.bees - (state.expedition.baseBees || location.bees));
     const fieldYield = upgrades.reduce((sum, id) => sum + (FIELD_UPGRADES[id]?.yield || 0), 0);
-    const yieldBonus = (1 + sealBonus(state, 'forageYield') + fieldYield) * (1 + extraCrew * .28);
+    const yieldBonus = (1 + sealBonus(state, 'forageYield') + fieldYield + roleCount(state, 'carrier') * .12) * (1 + extraCrew * .28);
     const nectar = Math.round(location.nectar * yieldBonus * (.85 + random() * .3));
     const wax = Math.round(location.wax * yieldBonus * (.85 + random() * .3));
     state.resources.nectar += nectar;
     state.resources.wax += wax;
     if (lost) {
       state.workers = Math.max(1, state.workers - lost);
+      state.workerRoles = state.workerRoles.slice(0, state.workers);
       state.lostWorkers += lost;
       state.stats.lost += lost;
     }
@@ -480,7 +546,7 @@
     state.resources.coins -= location.cost;
     const upgrades = state.progression.forageUpgrades[location.id] || [];
     const fieldSpeed = upgrades.reduce((sum, id) => sum + (FIELD_UPGRADES[id]?.speed || 0), 0);
-    const duration = location.duration * (1 - Math.min(.75, sealBonus(state, 'forageSpeed') + levelBonus(state, 'forageSpeed') + fieldSpeed)) / (1 + (crew - location.bees) * .16);
+    const duration = location.duration * (1 - Math.min(.8, sealBonus(state, 'forageSpeed') + levelBonus(state, 'forageSpeed') + fieldSpeed + roleCount(state, 'scout') * .08)) / (1 + (crew - location.bees) * .16);
     state.expedition = { locationId, bees: crew, baseBees: location.bees, elapsed: 0, duration };
     return { ok: true, location, duration, crew };
   }
@@ -495,7 +561,7 @@
     if (state.workers < 2) return { ok: false, reason: 'Keep one worker with the Queen.' };
     if (state.resources.coins < location.scoutCost) return { ok: false, reason: `You need ${location.scoutCost} crowns.` };
     state.resources.coins -= location.scoutCost;
-    state.progression.scouting = { locationId, elapsed: 0, duration: 12 + location.level * 2 };
+    state.progression.scouting = { locationId, elapsed: 0, duration: (12 + location.level * 2) / (1 + roleCount(state, 'scout') * .18) };
     return { ok: true, location };
   }
 
@@ -553,7 +619,7 @@
     for (const cell of Object.values(state.cells)) {
       if (cell.type === 'guard') guardStrength += 18 * Math.pow(1.65, Math.max(0, (cell.level || 1) - 1));
     }
-    return guardStrength * (1 + sealBonus(state, 'defense') + levelBonus(state, 'defense')) + state.workers * 1.25 * (1 + levelBonus(state, 'defense'));
+    return guardStrength * (1 + sealBonus(state, 'defense') + levelBonus(state, 'defense')) + state.workers * 1.25 * (1 + levelBonus(state, 'defense')) + roleCount(state, 'guard') * 4;
   }
 
   function resolveRaid(state, strategy = 'focus') {
@@ -579,14 +645,20 @@
       return { type: 'raid', victory: true, attack: Math.round(attack), defense: Math.round(defense), lost: 0 };
     }
     const gap = attack - defense;
-    const lost = Math.min(state.workers - 1, Math.max(1, Math.ceil(gap / 8)));
+    const threatened = Math.min(state.workers - 1, Math.max(1, Math.ceil(gap / 8)));
+    const medicSaved = Math.min(threatened, roleCount(state, 'medic'));
+    const chefSaved = Math.min(state.chef?.shield || 0, threatened - medicSaved);
+    const saved = medicSaved + chefSaved;
+    if (chefSaved) state.chef.shield = Math.max(0, state.chef.shield - chefSaved);
+    const lost = threatened - saved;
     state.workers -= lost;
+    state.workerRoles = state.workerRoles.slice(0, state.workers);
     state.lostWorkers += lost;
     state.stats.lost += lost;
     const queenFell = gap > 25 || state.workers <= 1 && gap > 10;
     if (queenFell) state.flags.gameOver = true;
     gainExperience(state, queenFell ? 0 : 8);
-    return { type: 'raid', victory: false, attack: Math.round(attack), defense: Math.round(defense), lost, queenFell };
+    return { type: 'raid', victory: false, attack: Math.round(attack), defense: Math.round(defense), lost, saved, medicSaved, chefSaved, queenFell };
   }
 
   function step(state, seconds, random = Math.random) {
@@ -622,6 +694,7 @@
         cell.brood.stage = 'egg';
         state.resources.nectar -= 8;
         state.workers += 1;
+        state.workerRoles.push(WORKER_ROLE_ORDER[(state.workers - 1) % WORKER_ROLE_ORDER.length]);
         state.stats.born += 1;
         gainExperience(state, 10);
         events.push({ type: 'hatch', coordKey });
@@ -763,7 +836,7 @@
 
   function normalizeState(raw) {
     const fresh = createInitialState(raw?.seed || Date.now(), raw?.config || {});
-    if (!raw || ![1, 2, 3, SAVE_VERSION].includes(raw.version)) return fresh;
+    if (!raw || ![1, 2, 3, 4, SAVE_VERSION].includes(raw.version)) return fresh;
     const merged = {
       ...fresh,
       ...raw,
@@ -781,6 +854,10 @@
     };
     merged.version = SAVE_VERSION;
     merged.emergency = { ...fresh.emergency, ...(raw.emergency || {}) };
+    merged.chef = { ...fresh.chef, ...(raw.chef || {}) };
+    merged.workerRoles = Array.isArray(raw.workerRoles) ? raw.workerRoles.filter(roleId => WORKER_ROLES[roleId]) : [];
+    while (merged.workerRoles.length < merged.workers) merged.workerRoles.push(WORKER_ROLE_ORDER[merged.workerRoles.length % WORKER_ROLE_ORDER.length]);
+    merged.workerRoles = merged.workerRoles.slice(0, merged.workers);
     for (const cell of Object.values(merged.cells)) {
       if (cell.type !== 'queen') cell.level = Math.max(1, cell.level || 1);
       if (cell.type === 'brood' && !cell.brood) cell.brood = { progress: raw.broodProgress || 0, stage: broodStage(raw.broodProgress || 0) };
@@ -792,11 +869,11 @@
   }
 
   return {
-    YEAR_LENGTH, BASE_QUOTA, MARKET_MIN_PRICE, MARKET_MAX_PRICE, AUTO_SELL_PRICE, WINTER_HONEY_PER_BEE, CELL_TYPES, UPGRADES, LEVEL_UPGRADES, FIELD_UPGRADES, FORAGE_LOCATIONS, BIOMES, DIFFICULTIES, SEASONS,
+    YEAR_LENGTH, BASE_QUOTA, MARKET_MIN_PRICE, MARKET_MAX_PRICE, AUTO_SELL_PRICE, WINTER_HONEY_PER_BEE, WINTER_FEAST_COST, CHEF_HONEY_REDUCTION, FEAST_HONEY_REDUCTION, CELL_TYPES, UPGRADES, LEVEL_UPGRADES, FIELD_UPGRADES, WORKER_ROLES, FORAGE_LOCATIONS, BIOMES, DIFFICULTIES, SEASONS,
     key, parseKey, distance, axialCoordinates, neighbors, seededRandom,
-    createInitialState, normalizeState, countCells, nectarPerGarden, adjacentCount, cellCost,
+    createInitialState, normalizeState, countCells, nectarPerGarden, adjacentCount, cellCost, workerRole, roleCount, assignWorkerRole,
     canBuild, buildCell, demolishCell, upgradeCell, cellBonuses, climate, storageCapacity,
-    productionRates, winterHoneyRate, startExpedition, startScouting, upgradeForageLocation, deliverHoney, sellHoney, raidStrength, raidDefense, resolveRaid,
+    productionRates, winterHoneyRate, chefStatus, serveWinterFeast, startExpedition, startScouting, upgradeForageLocation, deliverHoney, sellHoney, raidStrength, raidDefense, resolveRaid,
     step, upgradeChoices, rerollUpgrades, chooseUpgradeAndAdvance, markGameOver, sealBonus, levelBonus,
     gainExperience, levelUpgradeChoices, chooseLevelUpgrade, pheromoneRadius, pheromonePower,
     currentBiome, currentDifficulty, currentSeason, broodStage, feedBrood, emergencyAction

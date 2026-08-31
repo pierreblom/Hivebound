@@ -343,20 +343,34 @@ button, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action
 .bee-hit-target { fill: transparent; pointer-events: all; }
 .bee:focus .bee-picture { filter: drop-shadow(0 0 8px #fff) drop-shadow(0 0 6px #eeb62d); }
 .bee-profile {
-  position: absolute; z-index: 25; right: 22px; top: 100px; width: min(240px, calc(100% - 28px)); padding: 18px;
+  position: absolute; z-index: 25; right: 22px; top: 100px; width: min(380px, calc(100% - 28px)); max-height: calc(100% - 118px); overflow: auto; padding: 18px;
   border: 1px solid var(--line); border-radius: 16px; background: rgba(255,250,236,.96); box-shadow: var(--shadow); color: var(--ink);
 }
 .bee-profile > img { float: left; width: 64px; margin: 0 12px 8px 0; }
 .bee-profile h3 { margin: 4px 0; font: 700 20px var(--serif); }
 .bee-profile > strong { color: #61824e; font-size: 11px; }
+.bee-profile-role { margin-top: 3px; color: #8a5a17; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .09em; }
 .bee-profile dl { clear: both; display: grid; gap: 8px; margin: 16px 0 0; }
 .bee-profile dl div { padding-top: 8px; border-top: 1px solid var(--line); }
 .bee-profile dt { font-size: 8px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .bee-profile dd { margin: 2px 0 0; font-size: 11px; }
+.role-picker-label { margin: 15px 0 7px; color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.bee-role-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.bee-role-choice { min-height: 82px; display: grid; grid-template-columns: 42px 1fr; grid-template-rows: auto auto; align-items: center; padding: 7px; border: 1px solid var(--line); border-radius: 10px; background: #fffaf0; color: var(--ink); cursor: pointer; text-align: left; }
+.bee-role-choice img { grid-row: 1 / 3; width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+.bee-role-choice b { align-self: end; font-size: 9px; }
+.bee-role-choice small { align-self: start; color: var(--muted); font-size: 7px; line-height: 1.2; }
+.bee-role-choice.selected { border-color: var(--plum); background: #f2e4e9; box-shadow: inset 0 0 0 1px var(--plum); }
 .bee-profile > img, .worker-portrait img, .queen-hero, .hero-bee, .raid-visual img { image-rendering: pixelated; }
 .bee-profile > img { height: 64px; object-fit: contain; }
 .worker-portrait { overflow: hidden; }
 .worker-portrait img { width: 54px; height: 44px; object-fit: contain; }
+.worker-roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 8px; margin: 9px 0 18px; }
+.worker-card { display: grid; grid-template-columns: 58px 1fr; grid-template-rows: auto auto; align-items: center; min-height: 74px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: #fffaf0; color: var(--ink); cursor: pointer; text-align: left; }
+.worker-card img { grid-row: 1 / 3; width: 54px; height: 54px; object-fit: contain; image-rendering: pixelated; }
+.worker-card b { align-self: end; font: 700 12px var(--serif); }
+.worker-card small { align-self: start; color: #8a5a17; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.guild-hint { margin: -5px 0 10px; color: var(--muted); font-size: 9px; }
 .queen-hero { position: absolute; z-index: 4; left: 76px; top: 69px; width: 130px; height: 145px; object-fit: contain; filter: drop-shadow(0 10px 8px rgba(55,28,10,.34)); }
 .hero-bee { width: 58px; height: 47px; object-fit: contain; }
 .bee-a { left: 13%; top: 19%; }
@@ -479,6 +493,39 @@ body[data-season="frost"] .cell-queen .cell-label { fill: #315e71; }
   .resource-icon { width: 25px; height: 25px; }
   .season-timeline-button { height: 44px; }
   .season-timeline-button > b { display: none; }
+}
+
+/* Royal Honey Chef */
+.kitchen-modal {
+  width: min(780px, 100%); display: grid; grid-template-columns: .82fr 1.18fr;
+  overflow: hidden; background: #fff8e8;
+}
+.kitchen-portrait {
+  min-height: 440px; display: grid; place-items: center; padding: 30px;
+  background: radial-gradient(circle at 50% 43%, #f5d36d 0 18%, #b96d52 55%, #6f374e 100%);
+}
+.kitchen-portrait img {
+  width: min(100%, 330px); image-rendering: pixelated;
+  filter: drop-shadow(0 20px 15px rgba(52, 29, 21, .28));
+}
+.kitchen-copy { align-self: center; padding: 46px 42px; }
+.kitchen-copy h2 { margin: 5px 0 9px; font: 700 43px var(--serif); }
+.kitchen-copy > p:not(.eyebrow) { color: var(--muted); font-size: 12px; line-height: 1.55; }
+.kitchen-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 22px 0 12px; }
+.kitchen-stats span { padding: 12px; border-radius: 11px; background: #f2e3bd; }
+.kitchen-stats small, .kitchen-stats b { display: block; }
+.kitchen-stats small { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+.kitchen-stats b { margin-top: 4px; font-size: 11px; line-height: 1.3; }
+.chef-feast-status { min-height: 62px; margin-bottom: 14px; padding: 12px; border: 1px solid #e2c987; border-radius: 11px; color: #6d4c19; background: #fff3ce; font-size: 10px; line-height: 1.5; }
+.kitchen-modal .primary-button:disabled { opacity: .55; box-shadow: none; cursor: default; }
+
+@media (max-width: 620px) {
+  .kitchen-modal { grid-template-columns: 1fr; width: min(440px, 100%); }
+  .kitchen-portrait { min-height: 175px; max-height: 210px; padding: 12px; }
+  .kitchen-portrait img { width: 190px; }
+  .kitchen-copy { padding: 24px 18px max(20px, env(safe-area-inset-bottom)); }
+  .kitchen-copy h2 { font-size: 32px; }
+  .kitchen-stats { margin-top: 15px; }
 }
 
 /* Phone portrait: keep the board compact and make every system reachable. */

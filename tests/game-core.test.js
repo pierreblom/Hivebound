@@ -181,13 +181,48 @@ test('the winter cluster eats stored honey together', () => {
   const before = state.resources.honey;
   const rate = Core.winterHoneyRate(state);
   Core.step(state, 1, () => .5);
-  assert.equal(rate, (state.workers + 1) * Core.WINTER_HONEY_PER_BEE);
+  assert.equal(rate, (state.workers + 1) * Core.WINTER_HONEY_PER_BEE * (1 - Core.CHEF_HONEY_REDUCTION));
   assert.ok(Math.abs(before - state.resources.honey - rate) < 1e-9);
   assert.equal(state.stats.honeyEaten, rate);
   assert.equal(state.stats.yearHoneyEaten, rate);
 
   state.yearTime = Core.YEAR_LENGTH * .2;
   assert.equal(Core.winterHoneyRate(state), 0);
+});
+
+test('the Royal Honey Chef serves one feast each winter', () => {
+  const state = Core.createInitialState(42);
+  state.resources.honey = 20;
+  state.yearTime = Core.YEAR_LENGTH * .8;
+  const ordinaryRate = Core.winterHoneyRate(state);
+  const result = Core.serveWinterFeast(state);
+  assert.equal(result.ok, true);
+  assert.equal(state.resources.honey, 20 - Core.WINTER_FEAST_COST);
+  assert.equal(state.chef.feastYear, state.year);
+  assert.equal(state.chef.shield, 1);
+  assert.equal(state.stats.feastsServed, 1);
+  assert.equal(state.stats.honeyEaten, Core.WINTER_FEAST_COST);
+  assert.ok(Core.winterHoneyRate(state) < ordinaryRate);
+  assert.equal(Core.chefStatus(state).reduction, Core.FEAST_HONEY_REDUCTION);
+  assert.equal(Core.serveWinterFeast(state).ok, false);
+
+  const spring = Core.createInitialState(43);
+  spring.resources.honey = 20;
+  assert.equal(Core.serveWinterFeast(spring).ok, false);
+});
+
+test('a stored Winter Feast shield protects one worker in a failed raid', () => {
+  const protectedHive = Core.createInitialState(42);
+  protectedHive.workerRoles = Array(protectedHive.workers).fill('builder');
+  protectedHive.chef.shield = 1;
+  protectedHive.raid = { attack: 20 };
+  const ordinaryHive = structuredClone(protectedHive);
+  ordinaryHive.chef.shield = 0;
+  const protectedOutcome = Core.resolveRaid(protectedHive, 'none');
+  const ordinaryOutcome = Core.resolveRaid(ordinaryHive, 'none');
+  assert.equal(protectedOutcome.chefSaved, 1);
+  assert.equal(protectedOutcome.lost, ordinaryOutcome.lost - 1);
+  assert.equal(protectedHive.chef.shield, 0);
 });
 
 test('wasps attack once in every year, including year one', () => {
@@ -253,12 +288,16 @@ test('royal crest rerolls cost progressively more', () => {
 test('version one saves migrate with brood lifecycle data', () => {
   const old = Core.createInitialState(42);
   old.version = 1;
+  delete old.workerRoles;
   Core.buildCell(old, '1,0', 'brood');
   delete old.cells['1,0'].brood;
   old.broodProgress = .5;
   const migrated = Core.normalizeState(old);
-  assert.equal(migrated.version, 4);
+  assert.equal(migrated.version, 5);
+  assert.deepEqual(migrated.chef, { feastYear: 0, shield: 0 });
   assert.equal(migrated.cells['1,0'].brood.stage, 'larva');
+  assert.equal(migrated.workerRoles.length, migrated.workers);
+  assert.ok(migrated.workerRoles.every(roleId => Core.WORKER_ROLES[roleId]));
 });
 
 test('standing market orders keep the configured honey reserve', () => {
@@ -326,4 +365,54 @@ test('field improvements cost crowns and modify expeditions', () => {
   assert.equal(state.resources.coins, before - Core.FIELD_UPGRADES.flightpath.cost);
   Core.startExpedition(state, 'clover', 1);
   assert.ok(state.expedition.duration < Core.FORAGE_LOCATIONS[0].duration);
+});
+
+test('six worker professions can be assigned and change colony performance', () => {
+  const state = Core.createInitialState(42);
+  assert.deepEqual(state.workerRoles, ['scout', 'guard', 'medic', 'gardener']);
+  assert.equal(Object.keys(Core.WORKER_ROLES).length, 6);
+  assert.equal(Core.assignWorkerRole(state, 0, 'builder').ok, true);
+  assert.equal(Core.workerRole(state, 0).name, 'Builder');
+  assert.equal(Core.roleCount(state, 'builder'), 1);
+  assert.equal(Core.assignWorkerRole(state, 99, 'guard').ok, false);
+
+  const gardeners = Core.createInitialState(43);
+  gardeners.workerRoles = Array(gardeners.workers).fill('gardener');
+  const builders = structuredClone(gardeners);
+  builders.workerRoles = Array(builders.workers).fill('builder');
+  assert.ok(Core.productionRates(gardeners).nectar > Core.productionRates(builders).nectar);
+  assert.ok(Core.cellCost(builders, 'processor') < Core.cellCost(gardeners, 'processor'));
+
+  const guards = structuredClone(gardeners);
+  guards.workerRoles = Array(guards.workers).fill('guard');
+  assert.ok(Core.raidDefense(guards) > Core.raidDefense(gardeners));
+
+  const scouts = structuredClone(builders);
+  scouts.workerRoles = Array(scouts.workers).fill('scout');
+  Core.startExpedition(scouts, 'clover', 1);
+  Core.startExpedition(builders, 'clover', 1);
+  assert.ok(scouts.expedition.duration < builders.expedition.duration);
+
+  const carriers = Core.createInitialState(44);
+  carriers.workerRoles = Array(carriers.workers).fill('carrier');
+  const ordinary = structuredClone(carriers);
+  ordinary.workerRoles = Array(ordinary.workers).fill('builder');
+  Core.startExpedition(carriers, 'clover', 1);
+  Core.startExpedition(ordinary, 'clover', 1);
+  carriers.expedition.elapsed = carriers.expedition.duration;
+  ordinary.expedition.elapsed = ordinary.expedition.duration;
+  const carrierTrip = Core.step(carriers, .5, () => .5).find(event => event.type === 'expedition');
+  const ordinaryTrip = Core.step(ordinary, .5, () => .5).find(event => event.type === 'expedition');
+  assert.ok(carrierTrip.nectar > ordinaryTrip.nectar);
+
+  const medics = Core.createInitialState(45);
+  medics.workerRoles = ['medic', 'builder', 'builder', 'builder'];
+  const untrained = structuredClone(medics);
+  untrained.workerRoles = Array(untrained.workers).fill('builder');
+  medics.raid = { attack: 20 };
+  untrained.raid = { attack: 20 };
+  const medicOutcome = Core.resolveRaid(medics, 'none');
+  const untrainedOutcome = Core.resolveRaid(untrained, 'none');
+  assert.equal(medicOutcome.saved, 1);
+  assert.equal(medicOutcome.lost, untrainedOutcome.lost - 1);
 });
