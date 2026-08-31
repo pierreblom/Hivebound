@@ -7,6 +7,8 @@
   const CAREER_KEY = 'hivebound-career-v1';
   const CENTER = { x: 430, y: 335 };
   const HEX_SIZE = 53;
+  const MIN_ZOOM = .65;
+  const MAX_ZOOM = 2.25;
   const MOBILE_LAYOUT = window.matchMedia('(max-width: 900px)').matches;
   const elements = Object.fromEntries([
     'waxValue', 'nectarValue', 'honeyValue', 'coinValue', 'yearLabel', 'daysLabel', 'yearProgress',
@@ -59,6 +61,8 @@
   let pendingYearEnd = false;
   let beePaintAccumulator = 0;
   let beesInWinterHuddle = false;
+  let pinchGesture = null;
+  let suppressBoardTapUntil = 0;
   const forageCrew = {};
   const beeNames = ['Mallow Wingstead', 'Clover Quickwing', 'Pip Honeyfoot', 'Tansy Goldstripe', 'Bramble Bright', 'Ursula Beedle', 'Cecily Pollenby', 'Tilly Hivesworth', 'Juniper Buzz'];
   const beeLikes = ['warm comb and clover tea', 'sorting jars by stickiness', 'the acoustics of cell seven', 'sunflower pollen at dawn', 'short flights and long naps'];
@@ -93,6 +97,36 @@
     elements.gridLayer.setAttribute('transform', value);
     elements.bonusLayer.setAttribute('transform', value);
     elements.beeLayer.setAttribute('transform', value);
+  }
+
+  function touchDistance(touches) {
+    const x = touches[1].clientX - touches[0].clientX;
+    const y = touches[1].clientY - touches[0].clientY;
+    return Math.hypot(x, y);
+  }
+
+  function beginPinch(event) {
+    if (event.touches.length !== 2) return;
+    const distance = touchDistance(event.touches);
+    if (!distance) return;
+    event.preventDefault();
+    pinchGesture = { distance, zoom };
+    suppressBoardTapUntil = performance.now() + 450;
+  }
+
+  function updatePinch(event) {
+    if (!pinchGesture || event.touches.length !== 2) return;
+    event.preventDefault();
+    zoom = clamp(pinchGesture.zoom * touchDistance(event.touches) / pinchGesture.distance, MIN_ZOOM, MAX_ZOOM);
+    suppressBoardTapUntil = performance.now() + 450;
+    setTransform();
+  }
+
+  function endPinch(event) {
+    if (!pinchGesture || event.touches.length >= 2) return;
+    if (event.cancelable) event.preventDefault();
+    pinchGesture = null;
+    suppressBoardTapUntil = performance.now() + 450;
   }
 
   function showToast(message) {
@@ -1057,9 +1091,18 @@
   elements.soundToggle.addEventListener('change', () => { settings.sound = elements.soundToggle.checked; saveSettings(); });
   elements.motionToggle.addEventListener('change', () => { settings.reducedMotion = elements.motionToggle.checked; saveSettings(); });
   elements.hintsToggle.addEventListener('change', () => { settings.hints = elements.hintsToggle.checked; saveSettings(); });
-  elements.zoomIn.addEventListener('click', () => { zoom = clamp(zoom + .12, .75, 1.45); setTransform(); });
-  elements.zoomOut.addEventListener('click', () => { zoom = clamp(zoom - .12, .75, 1.45); setTransform(); });
+  elements.zoomIn.addEventListener('click', () => { zoom = clamp(zoom + .12, MIN_ZOOM, MAX_ZOOM); setTransform(); });
+  elements.zoomOut.addEventListener('click', () => { zoom = clamp(zoom - .12, MIN_ZOOM, MAX_ZOOM); setTransform(); });
   elements.zoomReset.addEventListener('click', () => { zoom = 1; setTransform(); });
+  elements.hiveSvg.addEventListener('touchstart', beginPinch, { passive: false });
+  elements.hiveSvg.addEventListener('touchmove', updatePinch, { passive: false });
+  elements.hiveSvg.addEventListener('touchend', endPinch, { passive: false });
+  elements.hiveSvg.addEventListener('touchcancel', endPinch, { passive: false });
+  elements.hiveSvg.addEventListener('click', event => {
+    if (performance.now() >= suppressBoardTapUntil) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
 
   loadSettings();
   const saved = localStorage.getItem(SAVE_KEY);
